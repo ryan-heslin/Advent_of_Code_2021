@@ -78,6 +78,4 @@ answer2 <- table(sapply(mapping, \(x) x[["id"]])) |>
 
 print(paste("Answer 1:", answer1))
 
-# answer2 <- #TODO
-
 print(paste("Answer 2:", answer2))
