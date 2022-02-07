@@ -1,8 +1,5 @@
 from functools import lru_cache
-from math import floor
 import re
-
-# Could not have been solved without the help of algmyr from Python discord, who suggested the approach I use to find z values
 
 with open("inputs/day24.txt") as f:
     raw_input = f.readlines()
@@ -37,7 +34,7 @@ def block(w, z, c4, c5, c15):
     return z
 
 
-def search(num, powers, constant_args):
+def search(num, powers, maxes, constant_args):
     z = 0
     while True:
         for i in range(len(powers)):
@@ -45,6 +42,8 @@ def search(num, powers, constant_args):
             num = num % powers[i]
             # Update w with new digit and run next block with previous state
             z = block(w=digit, z=z, **constant_args[i])
+            if z > maxes[i]:
+                break
         yield z
 
 
@@ -55,9 +54,9 @@ def nonzero_subtract(num):
             yield num
 
 
-def solve(powers, constant_args, num=10 ** 14):
+def solve(powers, constant_args, maxes, num=10 ** 14):
     z = -1
-    fun_gen = search(num, powers, constant_args)
+    fun_gen = search(num, powers, maxes, constant_args)
     num_gen = nonzero_subtract(num)
     while z != 0:
         z = next(fun_gen)
@@ -84,19 +83,22 @@ def get_max_zs(prev, argsets):
 
 
 def validate_zs(constants):
-    last = [set([0])]
+    last = [{w: {0} for w in range(1, 10)}]
     for vals in reversed(constants.values()):
-        last.append(set())
-        for last_z in last[-2]:  # last filled set
-            for w in range(1, 10):
+        last_vals = sorted({val for item in last[-1].values() for val in item})
+        last.append({w: {0} for w in range(1, 10)})
+        for w in last[-1].keys():
+            for last_z in last_vals:  # last filled set
                 for x in range(2):
                     # Solve for z
-                    z_min = floor(
-                        vals["c4"] * (last_z - x * (w + vals["c15"])) / (25 * x + 1)
+                    z_min = (vals["c4"] * (last_z - x * (w + vals["c15"]))) / (
+                        25 * x + 1
                     )
+                    if not (z_min % 2 == 0 and z_min > -1):
+                        continue
                     z_max = z_min + vals["c4"]
                     # Add any valid z-values not already present for this iteration
-                    last[-1].update(
+                    last[-1][w].update(
                         filter(
                             lambda cand: int(((cand % 26 + vals["c5"])) != w) == x,
                             range(int(z_min), int(z_max)),
@@ -113,39 +115,28 @@ def validate_zs(constants):
 
 
 zs = validate_zs(values)
-del zs[-1]
-zs.reverse()
-last_z = 0
-number = []
-for i in range(len(zs)):
-    for w in range(1, 10):
-        new_z = block(w, last_z, **values[i])
-        if new_z in zs[i]:
-            z = new_z
-            new_w = w
-    last_z = z
-    number.append(str(new_w))
 
-answer1 = int("".join(number))
-print(f"Answer 1: {answer1}")
+init = {w: block(w, 0, **values[0]) for w in range(1, 10)}
+w = []
+zs[0] = init
+# TODO each el of zs is dict of possible zs from the preceding block for that digit for that block. So find the initial z for each digit, then find the highest next digit with a z in that range, compute the exact z, search for it in the next block, repeat
+for i, subset in enumerate(zs):
+    valid = dict(filter(lambda k, v: v))
+# funs = [wrap_block(constants) for constants in values]
 
 
-def find_lowest(zs, values, last_z, num):
-    for w in range(1, 10):
-        new_z = block(w, last_z, **values[0])
-        if new_z in zs[0]:
-            if len(zs) == 1:
-                return num + [str(w)]
-            out = find_lowest(zs[1:], values[1:], new_z, num + [str(w)])
-            if out:
-                return out
-    else:
-        return
+# maxes = get_max_zs(0, values)
+# powers = [10 ** i for i in range(13, -1, -1)]
+# answer1 = solve(powers, values, maxes)
+# print(f"Answer 1: {answer1}")
 
 
-number = find_lowest(zs, list(values.values()), 0, [])
-answer2 = int("".join(number))
-print(f"Answer 2: {answer2}")
-
-
-powers = [10 ** i for i in range(13, -1, -1)]
+# My approach when I worked backwards was to not be too clever. Try all w (1-9) and all values of x (0-1) and compute the range of possible inverses for that scenario. Then run the operation forwards for the candidates and throw away the bad ones. (edited)
+# [10:03 PM]
+# My first approach before improving to the above was to instead brute force. We have a set of target z to reach. Loop over all w (1-9) and a large range of z (e.g. 0-1000000) and run the operation to see if it hits our set of target z. All inputs that work make up our new set of target z.
+#
+# It's unsatisfyingly slow, but it works. (edited)
+# [10:10 PM]
+# For both approaches, when you have the ok z values for every step you can just greedily pick the largest/smallest digit that hits a z that is ok (edited)
+# January 25, 2022
+#
