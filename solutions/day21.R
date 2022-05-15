@@ -120,54 +120,82 @@ colnames(pathways) <- c("position", "roll", "end", "number")
 pathways <- pathways[do.call(order, asplit(pathways, MARGIN = 2)), ]
 
 library(dplyr)
-simulate <- function(p1_start, p2_start, pathways, threshold = 21) {
+simulate <- function(p1_start, p2_start,
+                     pathways,
+                     threshold = 21,
+                     init = FALSE) {
   wins <- c("p1" = 0, "p2" = 0)
-  state <- data.frame(expand.grid(player = 1:2, position = 1:10, score = 0:21))
-  state$count <- ifelse(((state$position == p1_start & state$player == 1) | (state$position == p2_start & state$player == 2)) & state$score == 0, 1, 0)
+  player1 <- player2 <- expand.grid(position = 1:10, score = 0:21, count = 0)
+  player1[player1[["score"]] == 0 & player1[["position"]] == p1_start, "count"] <- 1
+  player2[player2[["score"]] == 0 & player2[["position"]] == p2_start, "count"] <- 1
   # Initialize starts with zero score
   i <- 1
-  # browser()
-  while (any(state$score < threshold)) {
-    last <- state
-    # For each player, advance each possible position by each possible roll value the correpsonding numebr of values, and update the state table accordingly.
+  advance_state <- function(state) {
     updated <- state |>
       subset(count > 0) |>
       merge(pathways, on = "position")
-    updated$score <- updated$score + updated$end
-    updated <- updated |>
-      group_by(position, player, score) |>
-      summarize(
-        count = c(crossprod(count, number)),
-        .groups = "drop"
-      )
-    # updated$count <- updated$count * updated$number
-    # Add wins; multiply count by number of opposing player states that could have reached here
-    if (any(updated$score >= threshold)) {
-      # player 1: multiply by player 2 states in last turn
-      wins["p1"] <- wins["p1"] + sum(updated$count[updated$player == 1 & updated$count >= threshold]) # * sum(last$count[last$player == 2])
-      # player 2: multiply by winning states after excluding player 1 wins
-      wins["p2"] <- wins["p2"] + sum(updated$count[updated$player == 2 & updated$score >= threshold]) # * sum(updated$count[updated$player == 1 & updated$score < threshold])
-      updated <- updated[updated$score < threshold, ]
-      # Break when all games simulated
-      if (nrow(updated) == 0) {
-        break
+    updated[["position"]] <- updated[["end"]]
+    updated[["count"]] <- updated[["count"]] * updated[["number"]]
+    updated[["score"]] <- updated[["score"]] + updated[["end"]]
+    updated
+  }
+
+  while (nrow(player2) > 0) {
+    # For each player, advance each possible position by each possible roll value the correpsonding numebr of values, and update the state table accordingly.
+    browser()
+    player1 <- advance_state(player1)
+    if (nrow(player1) > 0) {
+      wins <- player1[["score"]] > 20
+      # Multiply number of winning states by current states for other player
+      if (any(wins)) {
+        wins[["p1"]] <- wins[["p1"]] + sum(updated[wins, "count"]) * sum(player2[["count"]])
       }
+      player1 <- player1[!wins, c("position", "score", "count")]
     }
 
-    state <- merge(state, updated[, c("position", "player", "score", "count")],
-      by = c("position", "player", "score"), all.x =
-        TRUE
-    )
+    player2 <- advance_state(player2)
+    if (nrow(player2) == 0) break
+    wins <- player2[["score"]] > 20
+    # Multiply number of winning states by current states for other player
+    if (any(wins)) {
+      wins[["p2"]] <- wins[["p2"]] + sum(updated[wins, "count"]) * sum(player2[["count"]])
+    }
+    player1 <- player1[!wins, c("position", "score", "count")]
+
+    # updated$score <- updated$score + updated$end
+    # updated <- updated |>
+    # group_by(position, player, score) |>
+    # summarize(
+    # count = c(crossprod(count, number)),
+    # .groups = "drop"
+    # )
+    # updated$count <- updated$count * updated$number
+    # Add wins; multiply count by number of opposing player states that could have reached here
+    # if (any(updated$score >= threshold)) {
+    # player 1: multiply by player 2 states in last turn
+    # wins["p1"] <- wins["p1"] + sum(updated$count[updated$player == 1 & updated$count >= threshold]) # * sum(last$count[last$player == 2])
+    # player 2: multiply by winning states after excluding player 1 wins
+    # wins["p2"] <- wins["p2"] + sum(updated$count[updated$player == 2 & updated$score >= threshold]) # * sum(updated$count[updated$player == 1 & updated$score < threshold])
+    # updated <- updated[updated$score < threshold, ]
+    # Break when all games simulated
+    # if (nrow(updated) == 0) {
+    #  break
+    # }
+
+
+    # state <- merge(state, updated[, c("position", "player", "score", "count")],
+    #   by = c("position", "player", "score"), all.x =
+    #     TRUE
+    # )
     # Coalesce updated counts column
-    state$count <- ifelse(is.na(state$count.y), 0, state$count.y)
-    state$count.x <- state$count.y <- NULL
+    # state$count <- ifelse(is.na(state$count.y), 0, state$count.y)
+    # state$count.x <- state$count.y <- NULL
     # print(state[state$count > 0, ])
     i <- i + 1
-    # browser()
   }
   wins
 }
 
-answer2 <- simulate(4, 8, pathways)
+answer2 <- simulate(4, 8, pathways, init = TRUE)
 
 print(paste("Answer 2:", answer2))
