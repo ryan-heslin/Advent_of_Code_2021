@@ -1,6 +1,6 @@
 # Advent of Code: 2021
 
-This marks my second year participating in [ https://adventofcode.com/ ]( Advent of Code). I took part last year as well (see <https://github.com/ryan-heslin/aoc2020>. This time, I've taken a lot more care to organize solutions and inputs. I use both R and Python. For one puzzle, my "language" was
+This marks my second year participating in [https://adventofcode.com/]( Advent of Code). I took part last year as well (see <https://github.com/ryan-heslin/aoc2020>. This time, I've taken a lot more care to organize solutions and inputs. I use both R and Python. For one puzzle, my "language" was
 pen, paper, cut-up sticky notes, and human cognition, which made it easier to solve
 than implementing a real solution with [A*](https://en.wikipedia.org/wiki/A*_search_algorithm).
 Perhaps I'll do it properly at some point.
