@@ -1,3 +1,4 @@
+from collections import defaultdict
 from copy import deepcopy
 from functools import lru_cache
 from math import inf
@@ -88,30 +89,44 @@ def generate_pathways(positions, ymax=2):
 
 
 def A_star(start, goal):
-    open_set = {start.__hash__(): start}
+    start_k = hash(start)
+    open_set = {start_k: start}
+    done = set()
 
+    # For node k, node preceding it on cheapest known path to k
     came_from = {}
-    g_score = {}
-    g_score[start] = 0
-    f_score = {}
-    f_score[start] = start.h()
+
+    # g_score[k] is cost of cheapest known path to k
+    g_score = defaultdict(lambda: inf)
+    g_score[start_k] = 0
+    # gscore[k] + k.h() - best estimate of total cost (default to infinity if node unknown)
+    f_score = defaultdict(lambda: inf)
+    f_score[start_k] = start.h()
 
     while open_set:
         min_cost = inf
-        for state, score in f_score:
+        # h = hash
+        for h, score in f_score.items():
             this_cost = min(min_cost, score)
-            if this_cost < min_cost:
-                current = state
+            if this_cost < min_cost and h in open_set.keys():
+                current = open_set[h]
+                if current == goal:
+                    return g_score[hash(current)]  # Cheapest cost to goal
                 min_cost = this_cost
-        if current == goal:
-            return g_score[current]  # Cheapest cost to goal
+        current_k = hash(current)
+        # print(current)
+        if not current.neighbors_searched:
+            current.find_neighbors()
         for neighbor in current.neighbors:
-            g_score_new = g_score[current] + current.d(neighbor)
-            if g_score_new < g_score[neighbor]:
-                came_from[neighbor] = current
-            f_score[neighbor] = g_score_new + neighbor.h()
-            if neighbor not in open_set:
-                open_set[neighbor] = neighbor
+            g_score_new = g_score[current_k] + current.d(neighbor)
+            neighbor_k = hash(neighbor)
+            # This path to neighbor cheaper than any known, so record it
+            if g_score_new < g_score[neighbor_k]:
+                came_from[neighbor_k] = current
+                f_score[neighbor_k] = g_score_new + neighbor.h()
+                if neighbor not in open_set.values() and neighbor_k not in done:
+                    open_set[neighbor_k] = neighbor
+        done.add(open_set.pop(current_k))
 
 
 values_map = {"A": 0, "B": 1, "C": 2, "D": 3}
@@ -120,7 +135,7 @@ ends = {0, 10}
 with open("inputs/day23.txt") as f:
     inp = f.read().splitlines()
 
-xmax = len(inp[0]) - 2
+xmax = len(inp[0]) - 3
 start, ymax = parse(inp, xmax=xmax)
 
 positions = generate_positions(ymax=ymax)
@@ -188,15 +203,19 @@ class State:
     def d(self, other):
         comp = other.mapping
         distance = 0
+        # print(f"self: {self.mapping}")
+        # print(f"other: {other.mapping}")
         for k, v in self.mapping.items():  # Trickier than I thought
             # Expect one amphi to be in a different position
+            # if (6, 1) in v:
+            # breakpoint()
             difference = tuple(v.symmetric_difference(comp[k]))
             assert len(difference) <= 2
-            if len(difference):
-                distance += k * (
-                    len(State.pathways[(difference[0], difference[1])])
-                    + (difference[0][0] in State.sides_idx)
-                    + (difference[1][0] in State.sides_idx)
+            if len(difference) > 0:
+                distance += 10 ** k * (
+                    len(__class__.pathways[(difference[0], difference[1])])
+                    + (difference[0][0] in __class__.sides_idx)
+                    + (difference[1][0] in __class__.sides_idx)
                 )
         return distance
 
@@ -227,7 +246,6 @@ class State:
                         if coord[1] > start[k]:
                             cost += 10 ** k * ((self.ymax - coord[1]) * 2 + 2)
                             # self.sides[k]["completed"] += 1
-                            print("check")
                             completed[k] += 1
                     else:
                         cost += (
@@ -236,7 +254,7 @@ class State:
                         )
                         # self.sides[k]["target"] += 1
                         completed[k] += 1
-        print(completed)
+        # print(completed)
         return cost
 
     def add_neighbor(self, *args):
@@ -249,22 +267,25 @@ class State:
 
     # Confirms path clear to target
     def validate_path(self, start, end):
-        return not any(
-            space in self.occupied for space in __class__.pathways[(start, end)]
+        return not (
+            any(space in self.occupied for space in __class__.pathways[(start, end)])
+            or end in self.occupied
         )
 
     # Find each neighbor of this game state on the graph - i.e., all game states one legal
     # move from this one
     def find_neighbors(self):
 
-        for k in self.mapping.keys():  # Target is first open square in side room
+        copied = deepcopy(self.mapping)
+        for k in copied.keys():  # Target is first open square in side room
             target = self.sides[k]["target"]
             idx = self.type2side_coord(k)
             # Can the relevant side room admit amphipods of this type?
-            side_open = self.sides[k]["target"] < self.ymax - 1 and all(
+            side_open = self.sides[k]["target"] < self.ymax and all(
                 amphi == k for amphi in self.sides[k]["room"]
             )
-            for coord in self.mapping[k]:
+            for coord in copied[k]:
+                print(len(copied[k]))
                 # Case 1: path clear to target side room
                 # Must check if path clear to side room
                 # If target is ymax, room is full, so skip
@@ -275,26 +296,32 @@ class State:
                 )
                 if side_open and self.validate_path(coord, (idx, target)):
                     # I guess this works?
-                    self.mapping[k].remove(coord)
-                    self.mapping[k].add((idx, target))
-                    self.add_neighbor(deepcopy(self.mapping), self.xmax, self.ymax)
-                    self.mapping[k].remove((idx, target))
-                    self.mapping[k].add(coord)
+                    copied[k].remove(coord)
+                    copied[k].add((idx, target))
+                    self.add_neighbor(deepcopy(copied), self.xmax, self.ymax)
+                    copied[k].remove((idx, target))
+                    copied[k].add(coord)
 
                 # Can move out of starting side room, but not to target side room
                 elif not side_open and in_side:
                     for j in range(self.xmax + 1):
-                        this = (j, self.ymax)
-                        if self.validate_path(coord, this):
+                        print(copied[k])
+                        # if (1, 2) in copied[k]:
+                        #    breakpoint()
+                        if j not in self.sides_idx:
+                            this = (j, self.ymax)
+                            if self.validate_path(coord, this):
+                                if len(copied[k]) == 1:
+                                    breakpoint()
 
-                            self.mapping[k].remove(coord)
-                            self.mapping[k].add(this)
-                            self.add_neighbor(
-                                deepcopy(self.mapping), self.xmax, self.ymax
-                            )
-                            self.mapping[k].remove(this)
-                            self.mapping[k].add(coord)
-        self.neighbors_searched = True
+                                copied[k].remove(coord)
+                                copied[k].add(this)
+                                self.add_neighbor(
+                                    deepcopy(copied), self.xmax, self.ymax
+                                )
+                                copied[k].remove(this)
+                                copied[k].add(coord)
+            self.neighbors_searched = True
 
         # If correct side room open, move to it
         # Otherwise, try every open hall room
@@ -303,4 +330,9 @@ class State:
 goal_mapping = {i: {(i * 2 + 2, j) for j in range(ymax)} for i in range(4)}
 
 start = State(start, xmax=xmax, ymax=ymax)
+# start.find_neighbors()
+# for neighbor in start.neighbors:
+# print(start.d(neighbor))
+
 goal = State(goal_mapping, xmax=xmax, ymax=ymax)
+answer1 = A_star(start, goal)
