@@ -1,12 +1,18 @@
 from collections import defaultdict
 from copy import deepcopy
 from functools import lru_cache
+from itertools import repeat
 from math import inf
 
 answer1 = 15 + 140 + 1300 + 12000
 print(f"Answer 1: {answer1}")
 answer2 = 47 + 420 + 3100 + 40000
 print(f"Answer 2: {answer2}")
+
+
+values_map = {"A": 0, "B": 1, "C": 2, "D": 3}
+letters = list(values_map.keys())
+ends = {0, 10}
 
 
 def parse(inp, xmax=10):
@@ -101,36 +107,46 @@ def A_star(start, goal):
     g_score[start_k] = 0
     # gscore[k] + k.h() - best estimate of total cost (default to infinity if node unknown)
     f_score = defaultdict(lambda: inf)
-    f_score[start_k] = start.h()
+    f_score[start_k] = g_score[start_k] + start.h()
 
+    # breakpoint()
     while open_set:
         min_cost = inf
         # h = hash
-        for h, score in f_score.items():
+        for h, node in open_set.items():
+            score = f_score[h]
             this_cost = min(min_cost, score)
             if this_cost < min_cost and h in open_set.keys():
-                current = open_set[h]
+                current = node
+                # print(current)
+                # print("\n")
                 if current == goal:
                     return g_score[hash(current)]  # Cheapest cost to goal
                 min_cost = this_cost
         current_k = hash(current)
-        # print(current)
-        if not current.neighbors_searched:
-            current.find_neighbors()
+        current.find_neighbors()
+        print(current)
+        print(current.neighbors)
+        input("Continue: ")
+        print("\n\n\n")
+        open_set.pop(current_k)
+        done.add(current_k)
         for neighbor in current.neighbors:
+            # Distance from start to neighbor through current
             g_score_new = g_score[current_k] + current.d(neighbor)
+            # print(f"distance: {current.d(neighbor)}")
+            # print(neighbor)
             neighbor_k = hash(neighbor)
             # This path to neighbor cheaper than any known, so record it
             if g_score_new < g_score[neighbor_k]:
                 came_from[neighbor_k] = current
+                # New estimate of cost from this neighbor
+                # Forgot this line
+                g_score[neighbor_k] = g_score_new
                 f_score[neighbor_k] = g_score_new + neighbor.h()
-                if neighbor not in open_set.values() and neighbor_k not in done:
+                if neighbor not in open_set.values():
                     open_set[neighbor_k] = neighbor
-        done.add(open_set.pop(current_k))
 
-
-values_map = {"A": 0, "B": 1, "C": 2, "D": 3}
-ends = {0, 10}
 
 with open("inputs/day23.txt") as f:
     inp = f.read().splitlines()
@@ -145,6 +161,8 @@ paths = generate_pathways(positions)
 class State:
     pathways = paths
     sides_idx = {2, 4, 6, 8}
+    wall = "#"
+    empty = "."
 
     def __init__(self, mapping, xmax, ymax, *neighbors):
         self.neighbors_searched = False
@@ -178,13 +196,46 @@ class State:
         self.neighbors = set([*neighbors])
 
     # Converts amphipod type (0, 1, 2, 3) to side room x-coordinate (2, 4, 6, 8)
+
+    def draw_sides(self):
+        out = []
+        for i in range(self.ymax):
+            char = " " if i == 0 else __class__.wall
+            out.append(
+                [char] * 2
+                + [__class__.wall]
+                + [__class__.empty, __class__.wall] * len(__class__.sides_idx)
+                + [char] * 2
+            )
+        return out
+
     @staticmethod
     def type2side_coord(amphi):
         return amphi * 2 + 2
 
     # @lru_cache(maxsize=None)
     def __repr__(self):
-        return self.mapping.__repr__()
+        width = self.xmax + 3
+        top = list(repeat(__class__.wall, width))
+        hall = (
+            [__class__.wall]
+            + list(repeat(__class__.empty, self.xmax + 1))
+            + [__class__.wall]
+        )
+        sides = self.draw_sides()
+        bottom = [" ", " "] + list(repeat(__class__.wall, self.xmax - 1)) + [" ", " "]
+        for k, v in self.mapping.items():
+            char = letters[k]
+            for coord in v:
+                if coord[1] == self.ymax:
+                    hall[coord[0] + 1] = char
+                else:
+                    sides[coord[1]][coord[0] + 1] = char
+        sides.reverse()
+        sides.insert(0, hall)
+        sides.insert(0, top)
+        sides.append(bottom)
+        return "\n".join("".join(x) for x in sides)
 
     def __eq__(self, other):
         return self.mapping == other.mapping
@@ -198,7 +249,7 @@ class State:
 
     @staticmethod
     def tuple_string(data):
-        return "".join("".join(str(y) for y in x) for x in data)
+        return "".join("".join(str(y) for y in x) for x in sorted(data))
 
     def d(self, other):
         comp = other.mapping
@@ -210,12 +261,12 @@ class State:
             # if (6, 1) in v:
             # breakpoint()
             difference = tuple(v.symmetric_difference(comp[k]))
-            assert len(difference) <= 2
+            assert len(difference) in {0, 2}
             if len(difference) > 0:
                 distance += 10 ** k * (
                     len(__class__.pathways[(difference[0], difference[1])])
-                    + (difference[0][0] in __class__.sides_idx)
-                    + (difference[1][0] in __class__.sides_idx)
+                    # + (difference[0][0] in __class__.sides_idx)
+                    # + (difference[1][0] in __class__.sides_idx)
                 )
         return distance
 
@@ -274,7 +325,14 @@ class State:
 
     # Find each neighbor of this game state on the graph - i.e., all game states one legal
     # move from this one
+    # Known bugs:
+    # 1. Pieces move into own side room which has other types
+    # 2. Pieces move into empty side room of wrong type
+    # 3. Fails to move piece of correct type into empty side room of correct type w/ clear path
+    # 4. Possible bug: found a state with no possible moves
     def find_neighbors(self):
+        if self.neighbors_searched:
+            return
 
         copied = deepcopy(self.mapping)
         for k in copied.keys():  # Target is first open square in side room
@@ -285,10 +343,10 @@ class State:
                 amphi == k for amphi in self.sides[k]["room"]
             )
             for coord in copied[k]:
-                print(len(copied[k]))
                 # Case 1: path clear to target side room
                 # Must check if path clear to side room
                 # If target is ymax, room is full, so skip
+                # In any side, not necessarily correct one
                 in_side = (
                     coord[0] in self.sides_idx
                     and coord[1]
@@ -305,7 +363,6 @@ class State:
                 # Can move out of starting side room, but not to target side room
                 elif not side_open and in_side:
                     for j in range(self.xmax + 1):
-                        print(copied[k])
                         # if (1, 2) in copied[k]:
                         #    breakpoint()
                         if j not in self.sides_idx:
@@ -330,9 +387,6 @@ class State:
 goal_mapping = {i: {(i * 2 + 2, j) for j in range(ymax)} for i in range(4)}
 
 start = State(start, xmax=xmax, ymax=ymax)
-# start.find_neighbors()
-# for neighbor in start.neighbors:
-# print(start.d(neighbor))
-
 goal = State(goal_mapping, xmax=xmax, ymax=ymax)
+
 answer1 = A_star(start, goal)
