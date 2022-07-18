@@ -1,11 +1,13 @@
 from collections import defaultdict
 from copy import deepcopy
-from functools import lru_cache
 from itertools import repeat
 from math import inf
+import sys
 
-test = False
+test = len(sys.argv) > 1 and sys.argv[2] == "test"
 
+
+# From hand computation
 answer1 = 15 + 140 + 1300 + 12000
 print(f"Answer 1: {answer1}")
 answer2 = 47 + 420 + 3100 + 40000
@@ -22,7 +24,6 @@ def parse(inp, xmax=10):
     ymax = len(stripped)
     stripped.reverse()
     stripped = list(zip(*stripped))
-    # chop off columns of #
     stripped = stripped[1 : (xmax + 1)]
     mapping = {i: set() for i in range(4)}
     for i in range(min(ends) + 2, max(ends) - 1, 2):
@@ -80,23 +81,6 @@ def generate_pathways(positions, ymax=2):
                     else:
                         for i in range(pos2[0] + 1, pos1[0]):
                             this.add((i, ymax))
-                    # if pos1[1] < ymax - 1:  # Add side room squares
-                    # for i in range(pos1[1] + 1, ymax):
-                    # this.add((pos1[0], i))
-                    # if pos2[1] < ymax - 1:
-                    # for i in range(pos2[1] + 1, ymax):
-                    # this.add((pos2[0], i))
-                    ## TODO ensure all hall squares between are included, but not the starting position
-                    # if pos1[1] == ymax:
-                    # if pos1[0] < pos2[0]:
-                    # start = pos1[0] + 1
-                    # else:
-                    # start = pos1
-                    # xrange = sorted([pos1[0], pos2[0]])
-                    # xrange[0] += 1  # Dont have to check starting space
-                    # for i in range(*xrange):
-                    # if i not in {2, 4, 6, 8}:
-                    # this.add((i, ymax))
                     pathways[k] = this
                     pos1, pos2 = pos2, pos1
 
@@ -106,7 +90,6 @@ def generate_pathways(positions, ymax=2):
 def A_star(start, goal, debug=False):
     start_k = hash(start)
     open_set = {start_k: start}
-    done = set()
 
     # For node k, node preceding it on cheapest known path to k
     came_from = {}
@@ -143,7 +126,6 @@ def A_star(start, goal, debug=False):
             input("Continue: ")
             print("\n\n\n")
         open_set.pop(current_k)
-        done.add(current_k)
         for neighbor in current.neighbors:
             # print(neighbor.neighbors)
 
@@ -392,13 +374,6 @@ class Factory:
                 target = self.sides[k]["target"]
                 idx = self.type2side_coord(k)
                 # Can the relevant side room admit amphipods of this type?
-                # print(self.sides[k])
-                # [None, 1]
-                # print(target)
-
-                # side_open = self.sides[k].get("target", 0) < self.ymax and all(
-                #    amphi in {None, k} for amphi in self.sides[k]["room"]
-                # )
                 side_open = target < inf
                 for coord in copied[k]:
                     # Case 1: path clear to target side room
@@ -415,12 +390,6 @@ class Factory:
                             and self.sides[x_type]["room"][coord[1] + 1] is not None
                         ):
                             continue
-                    # in_side = (
-                    #    coord[0] in self.sides_idx
-                    #    and coord[1]
-                    #    == self.sides[self.side_idx2type(coord[0])]["target"] - 1
-                    # )
-
                     # Same case for starting side room and in hall room: always move to correct side room if possible
                     # Amphis in hall can only ever move to target side room
                     done = False
@@ -440,8 +409,6 @@ class Factory:
                             if j not in self.sides_idx:
                                 this = (j, self.ymax)
                                 if self.validate_path(coord, this):
-                                    # if len(copied[k]) == 1:
-                                    #    breakpoint()
 
                                     copied[k].remove(coord)
                                     copied[k].add(this)
@@ -463,13 +430,12 @@ start = part1.State(start, xmax=xmax, ymax=ymax)
 goal = part1.State(goal_mapping, xmax=xmax, ymax=ymax)
 
 
-if test:
-    start.find_neighbors()
 answer1 = A_star(start, goal, False)
 print(f"Answer 1: {answer1}")
 
 lengthened = inp[0:3] + ["  #D#C#B#A#", "  #D#B#A#C#"] + inp[3:]
 xmax = len(lengthened[0]) - 3
+
 start, ymax = parse(lengthened, xmax=xmax)
 
 positions = generate_positions(ymax=ymax)
@@ -482,4 +448,4 @@ part2 = Factory(paths)
 start = part2.State(start, xmax=xmax, ymax=ymax)
 goal = part2.State(goal_mapping, xmax=xmax, ymax=ymax)
 answer2 = A_star(start, goal, False)
-print("Answer 2: {answer2}")
+print(f"Answer 2: {answer2}")
