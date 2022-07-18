@@ -54,6 +54,8 @@ def generate_pathways(positions, ymax=2):
     for pos1 in positions:
         for pos2 in positions:
             # Moving between hall rooms is illegal
+            # if pos1 == (6, 2) and pos2 == (4, 2):
+            #    breakpoint()
             if (
                 pos1 != pos2
                 and not (pos1[1] == ymax and pos2[1] == ymax)
@@ -185,261 +187,270 @@ paths = generate_pathways(positions)
 # assert paths[((9, 2), (6, 1))] == {(6, 1), (6, 2), (7, 2), (8, 2)}
 
 
-class State:
-    pathways = paths
-    sides_idx = {2, 4, 6, 8}
-    wall = "#"
-    empty = "."
+class Factory:
+    def __init__(self, pathways):
+        self.pathways = pathways
+        __class__.State.pathways = self.pathways
 
-    def __init__(self, mapping, xmax, ymax, *neighbors):
-        self.neighbors_searched = False
-        self.mapping = deepcopy(mapping)
-        self.occupied = set()
-        # Each side is a list of the amphipod types in that type's side room, padded with None if need be
-        # Target: highest empty space
-        # Completed: Number of correctly placed amphipods (i.e, all of side room type from bottom, no wrong types interposed)
-        self.sides = {
-            k: {"room": [None] * ymax, "target": inf, "completed": True}
-            for k in self.mapping.keys()
-        }
-        # First open space in each side room; None if room full or contains amphipods of wrong type
-        for k, v in self.mapping.items():
-            self.occupied.update(v)
-            for coord in v:
-                if coord[0] in __class__.sides_idx:
-                    this_side = self.side_idx2type(coord[0])
-                    # convert x coord back to amphipod value
-                    self.sides[this_side]["room"][coord[1]] = k
-                    # Lowest open space
+    class State:
+        # pathways = paths
+        sides_idx = {2, 4, 6, 8}
+        wall = "#"
+        empty = "."
 
-        for k in self.sides.keys():
-            # Equal to ymax if room full
-            for i, amphi in enumerate(self.sides[k]["room"]):
-                if amphi != k:
-                    if amphi is None:  # All squares above must also be empty
-                        self.sides[k]["target"] = i
-                    else:
-                        self.sides[k]["completed"] = False
-                    break
-            # self.sides[k]["target"] = (
-            # max(
-            # i if amphi is not None else 0
-            # for i, amphi in enumerate(self.sides[k]["room"])
-            # )
-            # + 1
-            # )
-        self.xmax = xmax
-        self.ymax = ymax
-        self.neighbors = set()
+        def __init__(self, mapping, xmax, ymax, *neighbors):
+            self.neighbors_searched = False
+            self.mapping = deepcopy(mapping)
+            self.occupied = set()
+            # Each side is a list of the amphipod types in that type's side room, padded with None if need be
+            # Target: highest empty space
+            # Completed: Number of correctly placed amphipods (i.e, all of side room type from bottom, no wrong types interposed)
+            self.sides = {
+                k: {"room": [None] * ymax, "target": inf, "completed": True}
+                for k in self.mapping.keys()
+            }
+            # First open space in each side room; None if room full or contains amphipods of wrong type
+            for k, v in self.mapping.items():
+                self.occupied.update(v)
+                for coord in v:
+                    if coord[0] in __class__.sides_idx:
+                        this_side = self.side_idx2type(coord[0])
+                        # convert x coord back to amphipod value
+                        self.sides[this_side]["room"][coord[1]] = k
+                        # Lowest open space
 
-    # Converts amphipod type (0, 1, 2, 3) to side room x-coordinate (2, 4, 6, 8)
-
-    def draw_sides(self):
-        out = []
-        for i in range(self.ymax):
-            char = " " if i == 0 else __class__.wall
-            out.append(
-                [char] * 2
-                + [__class__.wall]
-                + [__class__.empty, __class__.wall] * len(__class__.sides_idx)
-                + [char] * 2
-            )
-        return out
-
-    @staticmethod
-    def type2side_coord(amphi):
-        return amphi * 2 + 2
-
-    # @lru_cache(maxsize=None)
-    def __repr__(self):
-        width = self.xmax + 3
-        top = list(repeat(__class__.wall, width))
-        hall = (
-            [__class__.wall]
-            + list(repeat(__class__.empty, self.xmax + 1))
-            + [__class__.wall]
-        )
-        sides = self.draw_sides()
-        bottom = [" ", " "] + list(repeat(__class__.wall, self.xmax - 1)) + [" ", " "]
-        for k, v in self.mapping.items():
-            char = letters[k]
-            for coord in v:
-                if coord[1] == self.ymax:
-                    hall[coord[0] + 1] = char
-                else:
-                    sides[coord[1]][coord[0] + 1] = char
-        sides.reverse()
-        sides.insert(0, hall)
-        sides.insert(0, top)
-        sides.append(bottom)
-        return "\n".join("".join(x) for x in sides)
-
-    def __eq__(self, other):
-        return self.mapping == other.mapping
-
-    # @lru_cache(maxsize=None)
-    def __hash__(self):
-        return int(
-            "".join(f"{str(k)}{self.tuple_string(v)}" for k, v in self.mapping.items())
-        )
-        # Unique for each game state
-
-    @staticmethod
-    def tuple_string(data):
-        return "".join("".join(str(y) for y in x) for x in sorted(data))
-
-    def d(self, other):
-        comp = other.mapping
-        distance = 0
-        # print(f"self: {self.mapping}")
-        # print(f"other: {other.mapping}")
-        for k, v in self.mapping.items():  # Trickier than I thought
-            # Expect one amphi to be in a different position
-            # if (6, 1) in v:
-            # breakpoint()
-            difference = tuple(v.symmetric_difference(comp[k]))
-            assert len(difference) in {0, 2}
-            # Should always be a single move separating the two states
-            if len(difference) > 0:
-                distance += 10 ** k * (
-                    len(__class__.pathways[(difference[0], difference[1])])
-                    # + (difference[0][0] in __class__.sides_idx)
-                    # + (difference[1][0] in __class__.sides_idx)
-                )
-        return distance
-
-    @staticmethod
-    def side_idx2type(x):
-        return (x - 2) / 2
-
-    # @lru_cache(maxsize=None)
-    def h(self):
-        # Destination squares
-        cost = 0
-        # For each side room, highest index of amphipod in correct side room
-        # This doesn't have to be updated
-        start = {}
-        for k, di in self.sides.items():
-            i = 0
-            while i < self.ymax and di["room"][i] == k:
-                i += 1
-            start[k] = i
-
-        completed = start.copy()
-        for k, v in self.mapping.items():
-            for coord in v:
-                idx = self.type2side_coord(k)
-                if coord[0] in self.sides_idx:
-                    # Has to leave side room and re-enter to clear way for wrong-type amphipod behind it
-                    if coord[0] == self.type2side_coord(k):
-                        if coord[1] > start[k]:
-                            cost += 10 ** k * ((self.ymax - coord[1]) * 2 + 2)
-                            # self.sides[k]["completed"] += 1
-                            completed[k] += 1
-                    else:
-                        cost += (
-                            len(__class__.pathways[(coord, (idx, completed[k]))])
-                            * 10 ** k
-                        )
-                        # self.sides[k]["target"] += 1
-                        completed[k] += 1
-        # print(completed)
-        return cost
-
-    def add_neighbor(self, *args):
-        # self.neighbors is set, so duplicates no issue
-        # Caller shouldn't be neighbor of new because moves aren't reversible
-        new = self.__class__(*args)
-        self.neighbors.add(new)
-
-    # Confirms path clear to target
-    def validate_path(self, start, end):
-        # Work around pathways including start space in some cases, which it never should
-        return not (
-            start == end
-            or any(
-                space in self.occupied
-                for space in __class__.pathways[(start, end)].difference({start})
-            )
-            or end in self.occupied
-        )
-
-    # Find each neighbor of this game state on the graph - i.e., all game states one legal
-    # move from this one
-    # Known bugs:
-    # 1. Pieces move into own side room which has other types
-    # 2. Pieces move into empty side room of wrong type
-    # 3. Fails to move piece of correct type into empty side room of correct type w/ clear path
-    # 4. Illegal state with amphi ahead of None space
-    # 5. Moves amphi in correct side room with no preceding amphis of wrong type
-    def find_neighbors(self):
-        if self.neighbors_searched:
-            return
-
-        copied = deepcopy(self.mapping)
-        for k in copied.keys():  # Target is first open square in side room
-            target = self.sides[k]["target"]
-            idx = self.type2side_coord(k)
-            # Can the relevant side room admit amphipods of this type?
-            # print(self.sides[k])
-            # [None, 1]
-            # print(target)
-
-            # side_open = self.sides[k].get("target", 0) < self.ymax and all(
-            #    amphi in {None, k} for amphi in self.sides[k]["room"]
-            # )
-            side_open = target < inf
-            for coord in copied[k]:
-                # Case 1: path clear to target side room
-                # Must check if path clear to side room
-                # If target is ymax, room is full, so skip
-                # In any side, not necessarily correct one
-
-                # Skip if amphi already in correct room, or amphi in wrong room but blocked
-
-                if coord[0] in self.sides_idx:
-                    x_type = self.side_idx2type(coord[0])
-                    if (x_type == k and self.sides[k]["completed"]) or (
-                        coord[1] < self.ymax - 1
-                        and self.sides[x_type]["room"][coord[1] + 1] is not None
-                    ):
-                        continue
-                # in_side = (
-                #    coord[0] in self.sides_idx
-                #    and coord[1]
-                #    == self.sides[self.side_idx2type(coord[0])]["target"] - 1
+            for k in self.sides.keys():
+                # Equal to ymax if room full
+                for i, amphi in enumerate(self.sides[k]["room"]):
+                    if amphi != k:
+                        if amphi is None:  # All squares above must also be empty
+                            self.sides[k]["target"] = i
+                        else:
+                            self.sides[k]["completed"] = False
+                        break
+                # self.sides[k]["target"] = (
+                # max(
+                # i if amphi is not None else 0
+                # for i, amphi in enumerate(self.sides[k]["room"])
                 # )
+                # + 1
+                # )
+            self.xmax = xmax
+            self.ymax = ymax
+            self.neighbors = set()
 
-                # Same case for starting side room and in hall room: always move to correct side room if possible
-                # Amphis in hall can only ever move to target side room
-                done = False
-                if side_open:
-                    dest = (idx, target)
-                    if self.validate_path(coord, dest):
-                        copied[k].remove(coord)
-                        copied[k].add(dest)
-                        self.add_neighbor(deepcopy(copied), self.xmax, self.ymax)
-                        copied[k].remove(dest)
-                        copied[k].add(coord)
-                        done = True
+        # Converts amphipod type (0, 1, 2, 3) to side room x-coordinate (2, 4, 6, 8)
 
-                # Can move out of starting side room, but not to target side room
-                if not done and coord[1] != self.ymax:
-                    for j in range(self.xmax + 1):
-                        if j not in self.sides_idx:
-                            this = (j, self.ymax)
-                            if self.validate_path(coord, this):
-                                # if len(copied[k]) == 1:
-                                #    breakpoint()
+        def draw_sides(self):
+            out = []
+            for i in range(self.ymax):
+                char = " " if i == 0 else __class__.wall
+                out.append(
+                    [char] * 2
+                    + [__class__.wall]
+                    + [__class__.empty, __class__.wall] * len(__class__.sides_idx)
+                    + [char] * 2
+                )
+            return out
 
-                                copied[k].remove(coord)
-                                copied[k].add(this)
-                                self.add_neighbor(
-                                    deepcopy(copied), self.xmax, self.ymax
-                                )
-                                copied[k].remove(this)
-                                copied[k].add(coord)
-        self.neighbors_searched = True
+        @staticmethod
+        def type2side_coord(amphi):
+            return amphi * 2 + 2
+
+        # @lru_cache(maxsize=None)
+        def __repr__(self):
+            width = self.xmax + 3
+            top = list(repeat(__class__.wall, width))
+            hall = (
+                [__class__.wall]
+                + list(repeat(__class__.empty, self.xmax + 1))
+                + [__class__.wall]
+            )
+            sides = self.draw_sides()
+            bottom = (
+                [" ", " "] + list(repeat(__class__.wall, self.xmax - 1)) + [" ", " "]
+            )
+            for k, v in self.mapping.items():
+                char = letters[k]
+                for coord in v:
+                    if coord[1] == self.ymax:
+                        hall[coord[0] + 1] = char
+                    else:
+                        sides[coord[1]][coord[0] + 1] = char
+            sides.reverse()
+            sides.insert(0, hall)
+            sides.insert(0, top)
+            sides.append(bottom)
+            return "\n".join("".join(x) for x in sides)
+
+        def __eq__(self, other):
+            return self.mapping == other.mapping
+
+        # @lru_cache(maxsize=None)
+        def __hash__(self):
+            return int(
+                "".join(
+                    f"{str(k)}{self.tuple_string(v)}" for k, v in self.mapping.items()
+                )
+            )
+            # Unique for each game state
+
+        @staticmethod
+        def tuple_string(data):
+            return "".join("".join(str(y) for y in x) for x in sorted(data))
+
+        def d(self, other):
+            comp = other.mapping
+            distance = 0
+            # print(f"self: {self.mapping}")
+            # print(f"other: {other.mapping}")
+            for k, v in self.mapping.items():  # Trickier than I thought
+                # Expect one amphi to be in a different position
+                # if (6, 1) in v:
+                # breakpoint()
+                difference = tuple(v.symmetric_difference(comp[k]))
+                assert len(difference) in {0, 2}
+                # Should always be a single move separating the two states
+                if len(difference) > 0:
+                    distance += 10 ** k * (
+                        len(__class__.pathways[(difference[0], difference[1])])
+                        # + (difference[0][0] in __class__.sides_idx)
+                        # + (difference[1][0] in __class__.sides_idx)
+                    )
+            return distance
+
+        @staticmethod
+        def side_idx2type(x):
+            return (x - 2) / 2
+
+        # @lru_cache(maxsize=None)
+        def h(self):
+            # Destination squares
+            cost = 0
+            # For each side room, highest index of amphipod in correct side room
+            # This doesn't have to be updated
+            start = {}
+            for k, di in self.sides.items():
+                i = 0
+                while i < self.ymax and di["room"][i] == k:
+                    i += 1
+                start[k] = i
+
+            completed = start.copy()
+            for k, v in self.mapping.items():
+                for coord in v:
+                    idx = self.type2side_coord(k)
+                    if coord[0] in self.sides_idx:
+                        # Has to leave side room and re-enter to clear way for wrong-type amphipod behind it
+                        if coord[0] == self.type2side_coord(k):
+                            if coord[1] > start[k]:
+                                cost += 10 ** k * ((self.ymax - coord[1]) * 2 + 2)
+                                # self.sides[k]["completed"] += 1
+                                completed[k] += 1
+                        else:
+                            cost += (
+                                len(__class__.pathways[(coord, (idx, completed[k]))])
+                                * 10 ** k
+                            )
+                            # self.sides[k]["target"] += 1
+                            completed[k] += 1
+            # print(completed)
+            return cost
+
+        def add_neighbor(self, *args):
+            # self.neighbors is set, so duplicates no issue
+            # Caller shouldn't be neighbor of new because moves aren't reversible
+            new = self.__class__(*args)
+            self.neighbors.add(new)
+
+        # Confirms path clear to target
+        def validate_path(self, start, end):
+            # Work around pathways including start space in some cases, which it never should
+            return not (
+                start == end
+                or any(
+                    space in self.occupied
+                    for space in __class__.pathways[(start, end)].difference({start})
+                )
+                or end in self.occupied
+            )
+
+        # Find each neighbor of this game state on the graph - i.e., all game states one legal
+        # move from this one
+        # Known bugs:
+        # 1. Pieces move into own side room which has other types
+        # 2. Pieces move into empty side room of wrong type
+        # 3. Fails to move piece of correct type into empty side room of correct type w/ clear path
+        # 4. Illegal state with amphi ahead of None space
+        # 5. Moves amphi in correct side room with no preceding amphis of wrong type
+        def find_neighbors(self):
+            if self.neighbors_searched:
+                return
+
+            copied = deepcopy(self.mapping)
+            for k in copied.keys():  # Target is first open square in side room
+                target = self.sides[k]["target"]
+                idx = self.type2side_coord(k)
+                # Can the relevant side room admit amphipods of this type?
+                # print(self.sides[k])
+                # [None, 1]
+                # print(target)
+
+                # side_open = self.sides[k].get("target", 0) < self.ymax and all(
+                #    amphi in {None, k} for amphi in self.sides[k]["room"]
+                # )
+                side_open = target < inf
+                for coord in copied[k]:
+                    # Case 1: path clear to target side room
+                    # Must check if path clear to side room
+                    # If target is ymax, room is full, so skip
+                    # In any side, not necessarily correct one
+
+                    # Skip if amphi already in correct room, or amphi in wrong room but blocked
+
+                    if coord[0] in self.sides_idx:
+                        x_type = self.side_idx2type(coord[0])
+                        if (x_type == k and self.sides[k]["completed"]) or (
+                            coord[1] < self.ymax - 1
+                            and self.sides[x_type]["room"][coord[1] + 1] is not None
+                        ):
+                            continue
+                    # in_side = (
+                    #    coord[0] in self.sides_idx
+                    #    and coord[1]
+                    #    == self.sides[self.side_idx2type(coord[0])]["target"] - 1
+                    # )
+
+                    # Same case for starting side room and in hall room: always move to correct side room if possible
+                    # Amphis in hall can only ever move to target side room
+                    done = False
+                    if side_open:
+                        dest = (idx, target)
+                        if self.validate_path(coord, dest):
+                            copied[k].remove(coord)
+                            copied[k].add(dest)
+                            self.add_neighbor(deepcopy(copied), self.xmax, self.ymax)
+                            copied[k].remove(dest)
+                            copied[k].add(coord)
+                            done = True
+
+                    # Can move out of starting side room, but not to target side room
+                    if not done and coord[1] != self.ymax:
+                        for j in range(self.xmax + 1):
+                            if j not in self.sides_idx:
+                                this = (j, self.ymax)
+                                if self.validate_path(coord, this):
+                                    # if len(copied[k]) == 1:
+                                    #    breakpoint()
+
+                                    copied[k].remove(coord)
+                                    copied[k].add(this)
+                                    self.add_neighbor(
+                                        deepcopy(copied), self.xmax, self.ymax
+                                    )
+                                    copied[k].remove(this)
+                                    copied[k].add(coord)
+            self.neighbors_searched = True
 
         # If correct side room open, move to it
         # Otherwise, try every open hall room
@@ -447,8 +458,9 @@ class State:
 
 goal_mapping = {i: {(i * 2 + 2, j) for j in range(ymax)} for i in range(4)}
 
-start = State(start, xmax=xmax, ymax=ymax)
-goal = State(goal_mapping, xmax=xmax, ymax=ymax)
+part1 = Factory(paths)
+start = part1.State(start, xmax=xmax, ymax=ymax)
+goal = part1.State(goal_mapping, xmax=xmax, ymax=ymax)
 
 
 if test:
@@ -461,10 +473,13 @@ xmax = len(lengthened[0]) - 3
 start, ymax = parse(lengthened, xmax=xmax)
 
 positions = generate_positions(ymax=ymax)
-paths = generate_pathways(positions)
+paths = generate_pathways(positions, ymax=ymax)
 
 goal_mapping = {i: {(i * 2 + 2, j) for j in range(ymax)} for i in range(4)}
 
-start = State(start, xmax=xmax, ymax=ymax)
-goal = State(goal_mapping, xmax=xmax, ymax=ymax)
+part2 = Factory(paths)
+
+start = part2.State(start, xmax=xmax, ymax=ymax)
+goal = part2.State(goal_mapping, xmax=xmax, ymax=ymax)
 answer2 = A_star(start, goal, False)
+print("Answer 2: {answer2}")
