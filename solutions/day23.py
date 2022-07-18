@@ -4,6 +4,8 @@ from functools import lru_cache
 from itertools import repeat
 from math import inf
 
+test = False
+
 answer1 = 15 + 140 + 1300 + 12000
 print(f"Answer 1: {answer1}")
 answer2 = 47 + 420 + 3100 + 40000
@@ -51,7 +53,12 @@ def generate_pathways(positions, ymax=2):
     pathways = {}
     for pos1 in positions:
         for pos2 in positions:
-            if pos1 != pos2:
+            # Moving between hall rooms is illegal
+            if (
+                pos1 != pos2
+                and not (pos1[1] == ymax and pos2[1] == ymax)
+                and not (pos1[0] == pos2[0])
+            ):
                 # Permutations are treated differently
                 for __ in range(2):
                     k = (pos1, pos2)
@@ -59,16 +66,17 @@ def generate_pathways(positions, ymax=2):
                     # Add side rooms (if applicable)
                     # NB hall room above each side is counted, even though no amphi can stop there, so length of pathway is correct
                     # NB start (pos1) is not included
+                    # BUG space above side rooms not counted
                     for i in range(pos1[1] + 1, ymax + 1):
                         this.add((pos1[0], i))
                     for i in range(pos2[1], ymax + 1):
-                        this.add((pos1[0], i))
+                        this.add((pos2[0], i))
                     # Hall rooms: only add hall room with x-coord of stop position if stop is not in side room (in which case it would already have been added)
                     if pos1[0] < pos2[0]:
-                        for i in range(pos1[0] + 1, pos2[0] + (pos2[1] == ymax)):
+                        for i in range(pos1[0] + 1, pos2[0]):
                             this.add((i, ymax))
                     else:
-                        for i in range(pos2[0] + 1, pos1[0] + (pos1[1] == ymax)):
+                        for i in range(pos2[0] + 1, pos1[0]):
                             this.add((i, ymax))
                     # if pos1[1] < ymax - 1:  # Add side room squares
                     # for i in range(pos1[1] + 1, ymax):
@@ -83,8 +91,7 @@ def generate_pathways(positions, ymax=2):
                     # else:
                     # start = pos1
                     # xrange = sorted([pos1[0], pos2[0]])
-                    #
-                    # xrange[0] += 1  # Don't have to check starting space
+                    # xrange[0] += 1  # Dont have to check starting space
                     # for i in range(*xrange):
                     # if i not in {2, 4, 6, 8}:
                     # this.add((i, ymax))
@@ -94,7 +101,7 @@ def generate_pathways(positions, ymax=2):
     return pathways
 
 
-def A_star(start, goal):
+def A_star(start, goal, debug=False):
     start_k = hash(start)
     open_set = {start_k: start}
     done = set()
@@ -109,7 +116,6 @@ def A_star(start, goal):
     f_score = defaultdict(lambda: inf)
     f_score[start_k] = g_score[start_k] + start.h()
 
-    # breakpoint()
     while open_set:
         min_cost = inf
         # h = hash
@@ -125,13 +131,20 @@ def A_star(start, goal):
                 min_cost = this_cost
         current_k = hash(current)
         current.find_neighbors()
-        print(current)
-        print(current.neighbors)
-        input("Continue: ")
-        print("\n\n\n")
+        if debug:
+            print(hash(current))
+            print(current)
+            print("-------------------\n")
+            for n in current.neighbors:
+                print(n)
+                print(current.d(n))
+            input("Continue: ")
+            print("\n\n\n")
         open_set.pop(current_k)
         done.add(current_k)
         for neighbor in current.neighbors:
+            # print(neighbor.neighbors)
+
             # Distance from start to neighbor through current
             g_score_new = g_score[current_k] + current.d(neighbor)
             # print(f"distance: {current.d(neighbor)}")
@@ -148,7 +161,8 @@ def A_star(start, goal):
                     open_set[neighbor_k] = neighbor
 
 
-with open("inputs/day23.txt") as f:
+target = "tests" if test else "inputs"
+with open(f"{target}/day23.txt") as f:
     inp = f.read().splitlines()
 
 xmax = len(inp[0]) - 3
@@ -156,6 +170,19 @@ start, ymax = parse(inp, xmax=xmax)
 
 positions = generate_positions(ymax=ymax)
 paths = generate_pathways(positions)
+# assert paths[((6, 0), (1, 2))] == {
+# (6, 1),
+# (6, 2),
+# (5, 2),
+# (4, 2),
+# (3, 2),
+# (2, 2),
+# (1, 2),
+# }
+# assert paths[(6, 1), (5, 2)] == {(6, 2), (5, 2)}
+# assert paths[((0, 2), (4, 1))] == {(1, 2), (2, 2), (3, 2), (4, 2), (4, 1)}
+# assert not any((i, 2) in paths.keys() for i in range(2, 10, 2))
+# assert paths[((9, 2), (6, 1))] == {(6, 1), (6, 2), (7, 2), (8, 2)}
 
 
 class State:
@@ -170,9 +197,9 @@ class State:
         self.occupied = set()
         # Each side is a list of the amphipod types in that type's side room, padded with None if need be
         # Target: highest empty space
-        # Cimpleted: Number of correctly placed amphipods (i.e, all of side room type from bottom, no wrong types interposed)
+        # Completed: Number of correctly placed amphipods (i.e, all of side room type from bottom, no wrong types interposed)
         self.sides = {
-            k: {"room": [None] * ymax, "target": None, "completed": None}
+            k: {"room": [None] * ymax, "target": inf, "completed": True}
             for k in self.mapping.keys()
         }
         # First open space in each side room; None if room full or contains amphipods of wrong type
@@ -180,20 +207,30 @@ class State:
             self.occupied.update(v)
             for coord in v:
                 if coord[0] in __class__.sides_idx:
-                    this_side = (coord[0] - 2) / 2
+                    this_side = self.side_idx2type(coord[0])
                     # convert x coord back to amphipod value
                     self.sides[this_side]["room"][coord[1]] = k
                     # Lowest open space
 
-        for v in self.sides.values():
+        for k in self.sides.keys():
             # Equal to ymax if room full
-            v["target"] = (
-                max(i if amphi is not None else 0 for i, amphi in enumerate(v["room"]))
-                + 1
-            )
+            for i, amphi in enumerate(self.sides[k]["room"]):
+                if amphi != k:
+                    if amphi is None:  # All squares above must also be empty
+                        self.sides[k]["target"] = i
+                    else:
+                        self.sides[k]["completed"] = False
+                    break
+            # self.sides[k]["target"] = (
+            # max(
+            # i if amphi is not None else 0
+            # for i, amphi in enumerate(self.sides[k]["room"])
+            # )
+            # + 1
+            # )
         self.xmax = xmax
         self.ymax = ymax
-        self.neighbors = set([*neighbors])
+        self.neighbors = set()
 
     # Converts amphipod type (0, 1, 2, 3) to side room x-coordinate (2, 4, 6, 8)
 
@@ -262,6 +299,7 @@ class State:
             # breakpoint()
             difference = tuple(v.symmetric_difference(comp[k]))
             assert len(difference) in {0, 2}
+            # Should always be a single move separating the two states
             if len(difference) > 0:
                 distance += 10 ** k * (
                     len(__class__.pathways[(difference[0], difference[1])])
@@ -310,16 +348,19 @@ class State:
 
     def add_neighbor(self, *args):
         # self.neighbors is set, so duplicates no issue
-        # breakpoint()
-        new = self.__class__(*args, self)
-        # print(args)
+        # Caller shouldn't be neighbor of new because moves aren't reversible
+        new = self.__class__(*args)
         self.neighbors.add(new)
-        # new.add_neighbor(self, *args)
 
     # Confirms path clear to target
     def validate_path(self, start, end):
+        # Work around pathways including start space in some cases, which it never should
         return not (
-            any(space in self.occupied for space in __class__.pathways[(start, end)])
+            start == end
+            or any(
+                space in self.occupied
+                for space in __class__.pathways[(start, end)].difference({start})
+            )
             or end in self.occupied
         )
 
@@ -329,7 +370,8 @@ class State:
     # 1. Pieces move into own side room which has other types
     # 2. Pieces move into empty side room of wrong type
     # 3. Fails to move piece of correct type into empty side room of correct type w/ clear path
-    # 4. Possible bug: found a state with no possible moves
+    # 4. Illegal state with amphi ahead of None space
+    # 5. Moves amphi in correct side room with no preceding amphis of wrong type
     def find_neighbors(self):
         if self.neighbors_searched:
             return
@@ -339,37 +381,56 @@ class State:
             target = self.sides[k]["target"]
             idx = self.type2side_coord(k)
             # Can the relevant side room admit amphipods of this type?
-            side_open = self.sides[k]["target"] < self.ymax and all(
-                amphi == k for amphi in self.sides[k]["room"]
-            )
+            # print(self.sides[k])
+            # [None, 1]
+            # print(target)
+
+            # side_open = self.sides[k].get("target", 0) < self.ymax and all(
+            #    amphi in {None, k} for amphi in self.sides[k]["room"]
+            # )
+            side_open = target < inf
             for coord in copied[k]:
                 # Case 1: path clear to target side room
                 # Must check if path clear to side room
                 # If target is ymax, room is full, so skip
                 # In any side, not necessarily correct one
-                in_side = (
-                    coord[0] in self.sides_idx
-                    and coord[1]
-                    == self.sides[self.side_idx2type(coord[0])]["target"] - 1
-                )
-                if side_open and self.validate_path(coord, (idx, target)):
-                    # I guess this works?
-                    copied[k].remove(coord)
-                    copied[k].add((idx, target))
-                    self.add_neighbor(deepcopy(copied), self.xmax, self.ymax)
-                    copied[k].remove((idx, target))
-                    copied[k].add(coord)
+
+                # Skip if amphi already in correct room, or amphi in wrong room but blocked
+
+                if coord[0] in self.sides_idx:
+                    x_type = self.side_idx2type(coord[0])
+                    if (x_type == k and self.sides[k]["completed"]) or (
+                        coord[1] < self.ymax - 1
+                        and self.sides[x_type]["room"][coord[1] + 1] is not None
+                    ):
+                        continue
+                # in_side = (
+                #    coord[0] in self.sides_idx
+                #    and coord[1]
+                #    == self.sides[self.side_idx2type(coord[0])]["target"] - 1
+                # )
+
+                # Same case for starting side room and in hall room: always move to correct side room if possible
+                # Amphis in hall can only ever move to target side room
+                done = False
+                if side_open:
+                    dest = (idx, target)
+                    if self.validate_path(coord, dest):
+                        copied[k].remove(coord)
+                        copied[k].add(dest)
+                        self.add_neighbor(deepcopy(copied), self.xmax, self.ymax)
+                        copied[k].remove(dest)
+                        copied[k].add(coord)
+                        done = True
 
                 # Can move out of starting side room, but not to target side room
-                elif not side_open and in_side:
+                if not done and coord[1] != self.ymax:
                     for j in range(self.xmax + 1):
-                        # if (1, 2) in copied[k]:
-                        #    breakpoint()
                         if j not in self.sides_idx:
                             this = (j, self.ymax)
                             if self.validate_path(coord, this):
-                                if len(copied[k]) == 1:
-                                    breakpoint()
+                                # if len(copied[k]) == 1:
+                                #    breakpoint()
 
                                 copied[k].remove(coord)
                                 copied[k].add(this)
@@ -378,7 +439,7 @@ class State:
                                 )
                                 copied[k].remove(this)
                                 copied[k].add(coord)
-            self.neighbors_searched = True
+        self.neighbors_searched = True
 
         # If correct side room open, move to it
         # Otherwise, try every open hall room
@@ -389,4 +450,21 @@ goal_mapping = {i: {(i * 2 + 2, j) for j in range(ymax)} for i in range(4)}
 start = State(start, xmax=xmax, ymax=ymax)
 goal = State(goal_mapping, xmax=xmax, ymax=ymax)
 
-answer1 = A_star(start, goal)
+
+if test:
+    start.find_neighbors()
+answer1 = A_star(start, goal, False)
+print(f"Answer 1: {answer1}")
+
+lengthened = inp[0:3] + ["  #D#C#B#A#", "  #D#B#A#C#"] + inp[3:]
+xmax = len(lengthened[0]) - 3
+start, ymax = parse(lengthened, xmax=xmax)
+
+positions = generate_positions(ymax=ymax)
+paths = generate_pathways(positions)
+
+goal_mapping = {i: {(i * 2 + 2, j) for j in range(ymax)} for i in range(4)}
+
+start = State(start, xmax=xmax, ymax=ymax)
+goal = State(goal_mapping, xmax=xmax, ymax=ymax)
+answer2 = A_star(start, goal, False)
