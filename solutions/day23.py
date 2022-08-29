@@ -55,8 +55,6 @@ def generate_pathways(positions, ymax=2):
     for pos1 in positions:
         for pos2 in positions:
             # Moving between hall rooms is illegal
-            # if pos1 == (6, 2) and pos2 == (4, 2):
-            #    breakpoint()
             if (
                 pos1 != pos2
                 and not (pos1[1] == ymax and pos2[1] == ymax)
@@ -154,20 +152,6 @@ start, ymax = parse(inp, xmax=xmax)
 
 positions = generate_positions(ymax=ymax)
 paths = generate_pathways(positions)
-# assert paths[((6, 0), (1, 2))] == {
-# (6, 1),
-# (6, 2),
-# (5, 2),
-# (4, 2),
-# (3, 2),
-# (2, 2),
-# (1, 2),
-# }
-# assert paths[(6, 1), (5, 2)] == {(6, 2), (5, 2)}
-# assert paths[((0, 2), (4, 1))] == {(1, 2), (2, 2), (3, 2), (4, 2), (4, 1)}
-# assert not any((i, 2) in paths.keys() for i in range(2, 10, 2))
-# assert paths[((9, 2), (6, 1))] == {(6, 1), (6, 2), (7, 2), (8, 2)}
-
 
 class Factory:
     def __init__(self, pathways):
@@ -210,13 +194,6 @@ class Factory:
                         else:
                             self.sides[k]["completed"] = False
                         break
-                # self.sides[k]["target"] = (
-                # max(
-                # i if amphi is not None else 0
-                # for i, amphi in enumerate(self.sides[k]["room"])
-                # )
-                # + 1
-                # )
             self.xmax = xmax
             self.ymax = ymax
             self.neighbors = set()
@@ -268,7 +245,6 @@ class Factory:
         def __eq__(self, other):
             return self.mapping == other.mapping
 
-        # @lru_cache(maxsize=None)
         def __hash__(self):
             return int(
                 "".join(
@@ -288,16 +264,12 @@ class Factory:
             # print(f"other: {other.mapping}")
             for k, v in self.mapping.items():  # Trickier than I thought
                 # Expect one amphi to be in a different position
-                # if (6, 1) in v:
-                # breakpoint()
                 difference = tuple(v.symmetric_difference(comp[k]))
                 assert len(difference) in {0, 2}
                 # Should always be a single move separating the two states
                 if len(difference) > 0:
                     distance += 10 ** k * (
                         len(__class__.pathways[(difference[0], difference[1])])
-                        # + (difference[0][0] in __class__.sides_idx)
-                        # + (difference[1][0] in __class__.sides_idx)
                     )
             return distance
 

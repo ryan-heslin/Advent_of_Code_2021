@@ -1,6 +1,6 @@
 # Advent of Code: 2021
 
-This marks my second year participating in Advent of Code (<https://adventofcode.com>). I took part last year as well (see <https://github.com/ryan-heslin/aoc2020>. This time, I've taken a lot more care to organize solutions and inputs. I did not set out to obtain
+This marks my second year participating in Advent of Code (<https://adventofcode.com>). I took part last year as well (see <https://github.com/ryan-heslin/aoc2020>). This time, I've taken a lot more care to organize solutions and inputs. I did not set out to obtain
 all 50 stars, but eventually did, using R and Python. For one puzzle, my "language" was
 pen, paper, cut-up sticky notes, and human cognition - at least until I implemented a real solution with [A*](https://en.wikipedia.org/wiki/A*_search_algorithm).
 Of course, `.jpg`s of the original "solution" are still available.
