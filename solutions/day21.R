@@ -1,94 +1,42 @@
-library(R6)
-
-clock_mod <- function(dividend, divisor) {
-    ifelse(dividend %% divisor == 0, divisor, dividend %% divisor)
-}
-
-raw_input <- readLines("inputs/day21.txt")
-processed <- as.integer(gsub(".*\\s(\\d+)$", "\\1", raw_input))
-names(processed) <- as.character(seq_along(processed))
-
-
-Player <- R6Class(public = list(
-    score = 0,
-    pos = NA_integer_,
-    initialize = function(start) {
-        self$pos <- start
+play <- function(starts, threshold = 1000) {
+    advance <- function(pos, last_val) {
+        forward <- get_forward(last_val)
+        last_val <<- clock_mod(last_val + 3, die_divisor)
+        clock_mod(pos + forward, turn_divisor)
     }
-))
 
-DiracGame <- R6::R6Class("DiracGame",
-    public = list(
-        last_val = 0,
-        players = NULL,
-        n_players = NA_integer_,
-        die_divisor = 100,
-        turn_divisor = 10,
-        turn = 0,
-        initialize = function(positions) {
-            self$players <- lapply(
-                positions,
-                \(x) Player$new(x)
-            )
-            self$n_players <- length(self$players)
-            invisible(self)
-        },
-        print = function() {
-            cat("Player 1 position:", self$players[[1]]$pos, sep = "\n")
-            cat("Player 2 position:", self$players[[2]]$pos, sep = "\n")
-            cat("Player 1 score:", self$players[[1]]$score, sep = "\n")
-            cat("Player 2 score:", self$players[[2]]$score, sep = "\n")
-            cat("Turn", self$turn, sep = "\n")
-            invisible(self)
-        },
-        play = function(threshold = 1000) {
-            last_score <- 0
-            active <- 1
-            while (last_score < threshold) {
-                # browser()
-                self$players[[active]]$pos <-
-                    private$advance(self$players[[active]]$pos, self$last_val)
-                self$players[[active]]$score <-
-                    last_score <-
-                    self$players[[active]]$score + self$players[[active]]$pos
-                self$turn <- self$turn + 3
-                active <- (active %% self$n_players) + 1
-            }
-        },
-        scores = function() sort(sapply(self$players, `[[`, "score"))
-    ),
-    private = list(
-        # Update player position
-        advance = function(pos, last_val) {
-            forward <- private$get_forward(last_val)
-            self$last_val <- clock_mod(self$last_val + 3, self$die_divisor)
-            clock_mod(pos + forward, self$turn_divisor)
-        },
-        get_forward = function(last_val) {
-            clock_mod(last_val + 1, self$die_divisor) +
-                clock_mod(last_val + 2, self$die_divisor) +
-                clock_mod(last_val + 3, self$die_divisor)
-        }
+    get_forward <- function(last_val) {
+        clock_mod(last_val + 1, die_divisor) +
+            clock_mod(last_val + 2, die_divisor) +
+            clock_mod(last_val + 3, die_divisor)
+    }
+
+    die_divisor <- 100
+    turn_divisor <- 10
+    turn <- last_val <- 0
+    players <- list(
+        p1 = list(
+            score = 0,
+            pos = starts[[1]]
+        ),
+        p2 = list(
+            score = 0,
+            pos = starts[[2]]
+        )
     )
-)
+    last_score <- 0
+    active <- 1
 
-game <- DiracGame$new(positions = processed)
-game$play(1000)
-answer1 <- game$scores()[[1]] * game$turn
-
-print(answer1)
-
-advances <- expand.grid(1:3, 1:3, 1:3) |>
-    rowSums() |>
-    tabulate()
-
-pathways <- expand.grid(1:10, which(advances != 0))
-pathways <- cbind(
-    pathways, clock_mod(rowSums(pathways), 10),
-    advances[pathways[, 2]]
-)
-colnames(pathways) <- c("position", "roll", "end", "number")
-pathways <- pathways[do.call(order, asplit(pathways, MARGIN = 2)), ]
+    while (last_score < threshold) {
+        players[[active]]$pos <-
+            advance(players[[active]]$pos, last_val)
+        players[[active]]$score <- last_score <- players[[active]]$score + players[[active]]$pos
+        turn <- turn + 3
+        active <- (active %% 2) + 1
+    }
+    turn * (sort(sapply(players, `[[`, "score")) |>
+        min())
+}
 
 simulate <- function(p1_start, p2_start,
                      pathways,
@@ -135,6 +83,96 @@ simulate <- function(p1_start, p2_start,
     total_wins
 }
 
-part2 <- simulate(processed[[1]], processed[[2]], pathways)
+Player <- R6Class(public = list(
+    score = 0,
+    pos = NA_integer_,
+    initialize = function(start) {
+        self$pos <- start
+    }
+))
 
+clock_mod <- function(dividend, divisor) {
+    ifelse(dividend %% divisor == 0, divisor, dividend %% divisor)
+}
+
+raw_input <- readLines("inputs/day21.txt")
+processed <- as.integer(gsub(".*\\s(\\d+)$", "\\1", raw_input))
+names(processed) <- as.character(seq_along(processed))
+
+
+
+# DiracGame <- R6::R6Class("DiracGame",
+#     public = list(
+#         last_val = 0,
+#         players = NULL,
+#         n_players = NA_integer_,
+#         die_divisor = 100,
+#         turn_divisor = 10,
+#         turn = 0,
+#         initialize = function(positions) {
+#             self$players <- lapply(
+#                 positions,
+#                 \(x) Player$new(x)
+#             )
+#             self$n_players <- length(self$players)
+#             invisible(self)
+#         },
+#         print = function() {
+#             cat("Player 1 position:", self$players[[1]]$pos, sep = "\n")
+#             cat("Player 2 position:", self$players[[2]]$pos, sep = "\n")
+#             cat("Player 1 score:", self$players[[1]]$score, sep = "\n")
+#             cat("Player 2 score:", self$players[[2]]$score, sep = "\n")
+#             cat("Turn", self$turn, sep = "\n")
+#             invisible(self)
+#         },
+#         play = function(threshold = 1000) {
+#             last_score <- 0
+#             active <- 1
+#             while (last_score < threshold) {
+#                 self$players[[active]]$pos <-
+#                     private$advance(self$players[[active]]$pos, self$last_val)
+#                 self$players[[active]]$score <-
+#                     last_score <-
+#                     self$players[[active]]$score + self$players[[active]]$pos
+#                 self$turn <- self$turn + 3
+#                 active <- (active %% self$n_players) + 1
+#             }
+#         },
+#         scores = function() sort(sapply(self$players, `[[`, "score"))
+#     ),
+#     private = list(
+#         # Update player position
+#         advance = function(pos, last_val) {
+#             forward <- private$get_forward(last_val)
+#             self$last_val <- clock_mod(self$last_val + 3, self$die_divisor)
+#             clock_mod(pos + forward, self$turn_divisor)
+#         },
+#         get_forward = function(last_val) {
+#             clock_mod(last_val + 1, self$die_divisor) +
+#                 clock_mod(last_val + 2, self$die_divisor) +
+#                 clock_mod(last_val + 3, self$die_divisor)
+#         }
+#     )
+# )
+
+# game <- DiracGame$new(positions = processed)
+# game$play(1000)
+# answer1 <- game$scores()[[1]] * game$turn
+
+print(play(starts = processed))
+
+advances <- expand.grid(1:3, 1:3, 1:3) |>
+    rowSums() |>
+    tabulate()
+
+pathways <- expand.grid(1:10, which(advances != 0))
+pathways <- cbind(
+    pathways, clock_mod(rowSums(pathways), 10),
+    advances[pathways[, 2]]
+)
+colnames(pathways) <- c("position", "roll", "end", "number")
+pathways <- pathways[do.call(order, asplit(pathways, MARGIN = 2)), ]
+
+
+part2 <- simulate(processed[[1]], processed[[2]], pathways)
 print(as.character(max(part2)))
