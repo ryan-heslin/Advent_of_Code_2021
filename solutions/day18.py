@@ -1,14 +1,6 @@
-#! /usr/bin/env python3
 import re
 from math import ceil
 from math import floor
-
-import regex
-
-with open("inputs/day18.txt") as f:
-    raw_input = f.read()
-
-processed = raw_input.split("\n")[:-1]
 
 
 def add(lhs, rhs):
@@ -18,7 +10,7 @@ def add(lhs, rhs):
 
 
 def split(num, pattern=r"(?!-)(\d{2,})"):
-    if not (replace := regex.findall(pattern, num)):
+    if not (replace := re.findall(pattern, num)):
         return num, False
     replace = replace[0]
     div = float(replace) / 2
@@ -46,24 +38,24 @@ def explode(num):
     if (start := next(count_brackets(num))) is None:
         return num, False
     # Ending position - off by one?
-    end = regex.search(r"\]", num[start:]).end() + start - 1
+    end = re.search(r"\]", num[start:]).end() + start - 1
     assert num[end] == "]"
 
-    left_num, right_num = (int(x) for x in regex.findall(r"\d+", num[start:])[0:2])
-    if prev_num := regex.findall(r"\d+", num[0:start]):
+    left_num, right_num = (int(x) for x in re.findall(r"\d+", num[start:])[0:2])
+    if prev_num := re.findall(r"\d+", num[0:start]):
         sub = str(int(prev_num[-1]) + left_num)
-        left = regex.sub(r"\d+(?=[^\d]*$)", sub, num[0:start])
+        left = re.sub(r"\d+(?=[^\d]*$)", sub, num[0:start])
     else:
         left = num[0:start]
-    if next_num := regex.findall(r"\d+", num[(1 + end) :]):
+    if next_num := re.findall(r"\d+", num[(1 + end) :]):
         sub = str(int(next_num[0]) + right_num)
-        right = regex.sub(r"\d+", sub, num[(end + 1) :], 1)
+        right = re.sub(r"\d+", sub, num[(end + 1) :], 1)
     else:
         right = num[(end + 1) :]
     middle = "0"
     # Add appropriate commas
-    middle = middle + "," if regex.match(r"\d", right[0]) else middle
-    middle = "," + middle if regex.match(r"\d", left[-1]) else middle
+    middle = middle + "," if re.match(r"\d", right[0]) else middle
+    middle = "," + middle if re.match(r"\d", left[-1]) else middle
     return left + middle + right, True
 
 
@@ -79,7 +71,7 @@ def process(nums):
     while len(nums) > 1:
         cur = [nums.pop(0)]
         cur.extend([nums[0]])
-        cur = regex.sub(r"'|\s", "", str(cur))
+        cur = re.sub(r"'|\s", "", str(cur))
         nums[0] = cur
 
         while True:
@@ -100,6 +92,12 @@ def find_largest(nums):
                 result = process([num1, num2])
                 highest_magnitude = max(highest_magnitude, find_magnitude(eval(result)))
     return highest_magnitude
+
+
+with open("inputs/day18.txt") as f:
+    raw_input = f.read()
+
+processed = raw_input.split("\n")[:-1]
 
 
 summed = eval(process(processed.copy()))
