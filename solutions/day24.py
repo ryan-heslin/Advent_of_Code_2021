@@ -1,6 +1,6 @@
+import re
 from functools import lru_cache
 from math import floor
-import re
 
 # Could not have been solved without the help of algmyr from Python discord, who suggested the approach I use to find z values
 
@@ -55,7 +55,7 @@ def nonzero_subtract(num):
             yield num
 
 
-def solve(powers, constant_args, num=10 ** 14):
+def solve(powers, constant_args, num=10**14):
     z = -1
     fun_gen = search(num, powers, constant_args)
     num_gen = nonzero_subtract(num)
@@ -148,4 +148,4 @@ answer2 = int("".join(number))
 print(f"Answer 2: {answer2}")
 
 
-powers = [10 ** i for i in range(13, -1, -1)]
+powers = [10**i for i in range(13, -1, -1)]

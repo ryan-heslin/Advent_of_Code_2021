@@ -1,18 +1,10 @@
+import sys
 from collections import defaultdict
 from copy import deepcopy
 from itertools import repeat
 from math import inf
-import sys
 
 test = len(sys.argv) > 1 and sys.argv[2] == "test"
-
-
-# From hand computation
-answer1 = 15 + 140 + 1300 + 12000
-print(f"Answer 1: {answer1}")
-answer2 = 47 + 420 + 3100 + 40000
-print(f"Answer 2: {answer2}")
-
 
 values_map = {"A": 0, "B": 1, "C": 2, "D": 3}
 letters = list(values_map.keys())
@@ -102,13 +94,12 @@ def A_star(start, goal, debug=False):
     while open_set:
         min_cost = inf
         # h = hash
+        current = None
         for h, node in open_set.items():
             score = f_score[h]
             this_cost = min(min_cost, score)
             if this_cost < min_cost and h in open_set.keys():
                 current = node
-                # print(current)
-                # print("\n")
                 if current == goal:
                     return g_score[hash(current)]  # Cheapest cost to goal
                 min_cost = this_cost
@@ -152,6 +143,7 @@ start, ymax = parse(inp, xmax=xmax)
 
 positions = generate_positions(ymax=ymax)
 paths = generate_pathways(positions)
+
 
 class Factory:
     def __init__(self, pathways):
@@ -268,7 +260,7 @@ class Factory:
                 assert len(difference) in {0, 2}
                 # Should always be a single move separating the two states
                 if len(difference) > 0:
-                    distance += 10 ** k * (
+                    distance += 10**k * (
                         len(__class__.pathways[(difference[0], difference[1])])
                     )
             return distance
@@ -298,13 +290,13 @@ class Factory:
                         # Has to leave side room and re-enter to clear way for wrong-type amphipod behind it
                         if coord[0] == self.type2side_coord(k):
                             if coord[1] > start[k]:
-                                cost += 10 ** k * ((self.ymax - coord[1]) * 2 + 2)
+                                cost += 10**k * ((self.ymax - coord[1]) * 2 + 2)
                                 # self.sides[k]["completed"] += 1
                                 completed[k] += 1
                         else:
                             cost += (
                                 len(__class__.pathways[(coord, (idx, completed[k]))])
-                                * 10 ** k
+                                * 10**k
                             )
                             # self.sides[k]["target"] += 1
                             completed[k] += 1

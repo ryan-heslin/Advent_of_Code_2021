@@ -1,12 +1,7 @@
-#! /usr/bin/env python3
-
 with open("inputs/day25.txt") as f:
     raw_input = f.read().split("\n")[:-1]
 
 processed = [list(x) for x in raw_input]
-
-# answer1 =
-# print(f"Answer 1 = {answer1}")
 
 
 class Trench:
@@ -73,5 +68,3 @@ class Trench:
 grid = Trench(processed)
 answer1 = grid.update()
 print(f"Answer 1: {answer1}")
-# answer2 =
-# print(f"Answer 2 = {answer2}")

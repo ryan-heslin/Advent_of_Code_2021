@@ -1,7 +1,5 @@
-#! /usr/bin/env python3
-
-from copy import deepcopy
-from math import inf, prod
+from math import inf
+from math import prod
 
 with open("inputs/day16.txt") as f:
     raw_input = f.read().rstrip("\n")
@@ -79,28 +77,13 @@ class Operator:
         return f"Type: {self.type} Version: {self.version}\n{''.join(child.__repr__() for child in self.children)}"
 
 
-# TODO make class track number of chars, yield requested number
-class BitReader:
-    def __init__(self, bits):
-        self.bits = bits
-
-    def _gen(self):
-        for bit in self.bits:
-            yield bit
-
-    def read(self, n):
-        return list()
-
-
 def build_tree(digits, chars_left=inf, packets_left=inf):
     out = []
-    # breakpoint()
     while (
         min(chars_left, packets_left) > 0 and len(digits) > 10 and digits.count("1") > 0
     ):
         # Return if either consuming threshold reached, or if remaining digits are all 0 or too short to form a packet
         # Padding zeroes don't count in length
-        print(f"{chars_left} | {packets_left}")
         node = Operator()
         version, digits = parse(digits, 3)
         type_id, digits = parse(digits, 3)
@@ -163,7 +146,6 @@ def evaluate(node):
 
 digits = hex2bin(raw_input)
 tree, _ = build_tree(digits)
-print_tree(tree[0])
 
 answer2 = evaluate(tree[0])
 answer1 = 0

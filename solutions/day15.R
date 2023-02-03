@@ -1,26 +1,26 @@
 #!/usr/bin/r
 raw_input <- readLines("inputs/day15.txt") |>
-  lapply(\(x) as.numeric(unlist(strsplit(x, "")))) |>
-  Reduce(f = rbind) |>
-  unname()
+    lapply(\(x) as.numeric(unlist(strsplit(x, "")))) |>
+    Reduce(f = rbind) |>
+    unname()
 
 layer <- rbind(
-  c(-1, 0),
-  c(0, 1),
-  c(1, 0),
-  c(0, -1)
+    c(-1, 0),
+    c(0, 1),
+    c(1, 0),
+    c(0, -1)
 ) |> t()
 
 get_neighbors <- function(x, y, row_max, col_max, val) {
-  layer <- rbind(
-    c(0, 1, 0, -1),
-    c(-1, 0, 1, 0)
-  )
-  # browser()
-  coords <- t(c(x, y) + layer)
-  coords <- coords[coords[, 1] > 0 & coords[, 1] <= row_max & coords[, 2] > 0 & coords[, 2] <= col_max, ]
-  # convert to 1d index to index row of data frame
-  coords[, 1] + col_max * (coords[, 2] - 1)
+    layer <- rbind(
+        c(0, 1, 0, -1),
+        c(-1, 0, 1, 0)
+    )
+    # browser()
+    coords <- t(c(x, y) + layer)
+    coords <- coords[coords[, 1] > 0 & coords[, 1] <= row_max & coords[, 2] > 0 & coords[, 2] <= col_max, ]
+    # convert to 1d index to index row of data frame
+    coords[, 1] + col_max * (coords[, 2] - 1)
 }
 
 # graph <- lapply(
@@ -35,32 +35,32 @@ get_neighbors <- function(x, y, row_max, col_max, val) {
 # )
 # )
 coords <- data.frame(
-  ro = c(row(raw_input)),
-  co = c(col(raw_input)),
-  danger = c(raw_input),
-  min_dist = Inf
+    ro = c(row(raw_input)),
+    co = c(col(raw_input)),
+    danger = c(raw_input),
+    min_dist = Inf
 )
 coords$neighbors <- mapply(get_neighbors,
-  x = coords$ro, y = coords$co, nrow(raw_input), ncol(raw_input),
-  val = coords$danger,
-  SIMPLIFY = FALSE
+    x = coords$ro, y = coords$co, nrow(raw_input), ncol(raw_input),
+    val = coords$danger,
+    SIMPLIFY = FALSE
 )
 coords[1, c("min_dist", "danger")] <- 0
 current <- 1
 traverse <- function(graph) {
-  unvisited <- neighbors <- seq_len(nrow(graph))
-  while (length(unvisited)) {
-    # Get unvisited node w/ minimum distance, remove from unvisited list
-    current <- unvisited[which.min(graph[unvisited, "min_dist"])]
-    unvisited <- unvisited[-which.min(graph[unvisited, "min_dist"])]
-    dist <- graph[current, "min_dist"]
-    neighbors <- graph[current, "neighbors"][[1]]
-    graph[neighbors, "min_dist"] <- pmin(dist + graph[neighbors, "danger"], graph[neighbors, "min_dist"])
-    neighbors <- intersect(neighbors, unvisited)
-    # neighbors <- neighbors[order(graph[neighbors, "min_dist"])]
-    # Exit on visiting all
-  }
-  return(graph)
+    unvisited <- neighbors <- seq_len(nrow(graph))
+    while (length(unvisited)) {
+        # Get unvisited node w/ minimum distance, remove from unvisited list
+        current <- unvisited[which.min(graph[unvisited, "min_dist"])]
+        unvisited <- unvisited[-which.min(graph[unvisited, "min_dist"])]
+        dist <- graph[current, "min_dist"]
+        neighbors <- graph[current, "neighbors"][[1]]
+        graph[neighbors, "min_dist"] <- pmin(dist + graph[neighbors, "danger"], graph[neighbors, "min_dist"])
+        neighbors <- intersect(neighbors, unvisited)
+        # neighbors <- neighbors[order(graph[neighbors, "min_dist"])]
+        # Exit on visiting all
+    }
+    return(graph)
 }
 
 graph <- traverse(coords)
@@ -73,14 +73,14 @@ expanded <- expanded + mask
 expanded[expanded > 9] <- expanded[expanded > 9] - 9
 
 coords2 <- data.frame(
-  danger = c(expanded),
-  min_dist = Inf
+    danger = c(expanded),
+    min_dist = Inf
 )
 
 coords2$neighbors <- mapply(get_neighbors,
-  x = c(row(expanded)), y = c(col(expanded)), nrow(expanded), ncol(expanded),
-  val = coords2$danger,
-  SIMPLIFY = FALSE
+    x = c(row(expanded)), y = c(col(expanded)), nrow(expanded), ncol(expanded),
+    val = coords2$danger,
+    SIMPLIFY = FALSE
 )
 print(paste("Answer 1:", answer1))
 

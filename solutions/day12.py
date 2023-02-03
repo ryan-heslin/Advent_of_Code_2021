@@ -1,7 +1,13 @@
-#! /usr/bin/env python3
-
 with open("inputs/day12.txt") as f:
     raw_input = f.read().split("\n")[:-1]
+
+
+def unique(lst):
+    out = []
+    for x in lst:
+        if x not in out:
+            out.append(x)
+    return out
 
 
 pairs = [x.split("-") for x in raw_input]
@@ -90,14 +96,6 @@ print(f"Answer 1 = {answer1}")
 
 cave2 = Cave(neighbors)
 cave2.get_paths2()
-
-
-def unique(lst):
-    out = []
-    for x in lst:
-        if x not in out:
-            out.append(x)
-    return out
 
 
 answer2 = len(unique(cave2.paths))

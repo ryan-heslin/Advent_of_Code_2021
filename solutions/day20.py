@@ -1,18 +1,3 @@
-#! /usr/bin/env python3
-
-with open("inputs/day20.txt") as f:
-    raw_input = f.read().split("\n")[:-1]
-
-number = "".join(["0" if char == "." else "1" for char in raw_input.pop(0)])
-lookup = {k: v for k, v in enumerate(number)}
-
-digits = {".": "0", "#": "1"}
-raw_input.pop(0)
-
-nrow = len(raw_input)
-ncol = len(raw_input[0])
-
-
 def create_matrix(nrow, ncol, val):
     return [[val] * (ncol) for __ in range(nrow)]
 
@@ -65,6 +50,19 @@ def convolve(mat, lookup, inc=0, iterations=2):
     # Swap padding
     out = switch(out)
     return convolve(out, lookup, inc, iterations)
+
+
+with open("inputs/day20.txt") as f:
+    raw_input = f.read().split("\n")[:-1]
+
+number = "".join(["0" if char == "." else "1" for char in raw_input.pop(0)])
+lookup = {k: v for k, v in enumerate(number)}
+
+digits = {".": "0", "#": "1"}
+raw_input.pop(0)
+
+nrow = len(raw_input)
+ncol = len(raw_input[0])
 
 
 matrix = create_matrix(nrow, ncol, val="0")
