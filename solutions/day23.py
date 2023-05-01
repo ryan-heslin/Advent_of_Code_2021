@@ -53,7 +53,7 @@ def generate_pathways(positions, ymax=2):
                 and not (pos1[0] == pos2[0])
             ):
                 # Permutations are treated differently
-                for __ in range(2):
+                for _ in range(2):
                     k = (pos1, pos2)
                     this = set()
                     # Add side rooms (if applicable)
@@ -87,13 +87,11 @@ def A_star(start, goal, debug=False):
     # g_score[k] is cost of cheapest known path to k
     g_score = defaultdict(lambda: inf)
     g_score[start_k] = 0
-    # gscore[k] + k.h() - best estimate of total cost (default to infinity if node unknown)
     f_score = defaultdict(lambda: inf)
     f_score[start_k] = g_score[start_k] + start.h()
 
     while open_set:
         min_cost = inf
-        # h = hash
         current = None
         for h, node in open_set.items():
             score = f_score[h]
@@ -103,6 +101,7 @@ def A_star(start, goal, debug=False):
                 if current == goal:
                     return g_score[hash(current)]  # Cheapest cost to goal
                 min_cost = this_cost
+
         current_k = hash(current)
         current.find_neighbors()
         if debug:
