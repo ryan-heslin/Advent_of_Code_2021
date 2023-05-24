@@ -1,24 +1,9 @@
-with open("inputs/day12.txt") as f:
-    raw_input = f.read().split("\n")[:-1]
-
-
 def unique(lst):
     out = []
     for x in lst:
         if x not in out:
             out.append(x)
     return out
-
-
-pairs = [x.split("-") for x in raw_input]
-nodes = {y for x in pairs for y in x}
-neighbors = {node: [] for node in nodes}
-
-# Create dict where each node is keyed to list of adjacent nodes
-while pairs:
-    this = pairs.pop()
-    neighbors[this[0]].append(this[1])
-    neighbors[this[1]].append(this[0])
 
 
 class Node:
@@ -87,6 +72,21 @@ class Cave:
             return
         for neighbor in neighbors:
             self.get_paths2(node=neighbor, traversed=traversed.copy(), doubled=doubled)
+
+
+with open("inputs/day12.txt") as f:
+    raw_input = f.read().split("\n")[:-1]
+
+
+pairs = [x.split("-") for x in raw_input]
+nodes = {y for x in pairs for y in x}
+neighbors = {node: [] for node in nodes}
+
+# Create dict where each node is keyed to list of adjacent nodes
+while pairs:
+    this = pairs.pop()
+    neighbors[this[0]].append(this[1])
+    neighbors[this[1]].append(this[0])
 
 
 cave = Cave(neighbors)

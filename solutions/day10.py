@@ -2,15 +2,6 @@ from collections import deque
 from functools import reduce
 
 
-def score(l):
-    table = dict(zip(["(", "[", "{", "<"], range(1, 5)))
-    return reduce(lambda x, y: (5 * x) + table[y], l, 0)
-
-
-with open("inputs/day10.txt") as f:
-    raw_input = f.read().split("\n")[:-1]
-
-
 class CharCount:
 
     pairs = {
@@ -47,8 +38,16 @@ class CharCount:
         return self.valid
 
 
+def score(l):
+    table = dict(zip(["(", "[", "{", "<"], range(1, 5)))
+    return reduce(lambda x, y: (5 * x) + table[y], l, 0)
+
+
+with open("inputs/day10.txt") as f:
+    raw_input = f.read().split("\n")[:-1]
+
 part1 = 0
-processed = [deque(x) for x in raw_input]
+processed = list(map(deque, raw_input))
 valid = []
 for i, line in enumerate(processed):
     record = CharCount()
@@ -61,6 +60,6 @@ for i, line in enumerate(processed):
 print(f"Answer 1 = {part1}")
 
 
-scores = sorted([score(x) for x in valid])
+scores = sorted(map(score, valid))
 part2 = scores[len(scores) // 2]
 print(f"Answer 2 = {part2}")

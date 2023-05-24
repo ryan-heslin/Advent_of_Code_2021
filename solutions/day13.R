@@ -24,7 +24,6 @@ folds <- gsub("fold\\salong\\s", "", folds) |>
 fold_coords <- matrix(0, nrow = nrow(folds), ncol = ncol(folds))
 fold_coords[cbind(seq_len(nrow(folds)), match(folds[, 1], col_names))] <- as.integer(folds[, 2])
 
-
 fold1 <- fold(coords, fold_coords[1, ])
 answer1 <- nrow(fold1) - sum(duplicated(fold1))
 

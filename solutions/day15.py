@@ -42,20 +42,6 @@ def expand(graph, n, xrange, yrange):
     return result
 
 
-def make_l1(goal):
-    def result(point):
-        return abs(point.real - goal.real) + abs(point.imag - goal.imag)
-
-    return result
-
-
-def make_l2(goal):
-    def result(point):
-        return (point.real - goal.real) ** 2 + (point.imag - goal.imag) ** 2
-
-    return result
-
-
 def make_neighbors(xmin, xmax, ymin, ymax):
     @cache
     def result(point):

@@ -1,24 +1,12 @@
 from collections import Counter
-from collections import defaultdict
-
-with open("inputs/day14.txt") as f:
-    raw_input = f.read().split("\n")[:-1]
 
 
-def default(*args, **kwargs):
+def default(*_, **__):
     return True
 
 
-sequence = list(raw_input.pop(0))
-
-mappings = {
-    x.split(" -> ")[0]: lambda l, i, val=x.split(" -> ")[1]: l.insert(i, val)
-    for x in raw_input[1:]
-}
-
-
 def expand(sequence, mappings, iterations=10):
-    for __ in range(iterations):
+    for _ in range(iterations):
         i = 0
         while i < len(sequence) - 1:
             pair = "".join(sequence[i : (i + 2)])
@@ -32,10 +20,18 @@ def get_answer(expanded):
     return count[0][1] - count[-1][1]
 
 
+with open("inputs/day14.txt") as f:
+    raw_input = f.read().split("\n")[:-1]
+
+sequence = list(raw_input.pop(0))
+mappings = {
+    x.split(" -> ")[0]: lambda l, i, val=x.split(" -> ")[1]: l.insert(i, val)
+    for x in raw_input[1:]
+}
+
 expanded = expand(sequence.copy(), mappings)
 answer1 = get_answer(expanded)
 print(f"Answer 1 = {answer1}")
-
 
 pair_mappings = {}
 raw_input.pop(0)

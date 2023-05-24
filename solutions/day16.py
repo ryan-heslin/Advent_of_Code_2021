@@ -1,9 +1,5 @@
-import operator
 from math import inf
 from math import prod
-
-with open("inputs/day16.txt") as f:
-    raw_input = f.read().rstrip("\n")
 
 
 def hex2bin(string):
@@ -127,10 +123,11 @@ def evaluate(node):
     arg = node.children
     if node.type not in (5, 6, 7):
         arg = [arg]
-        # assert len(node.children) == 2
     return node.operators[node.type](*arg)
 
 
+with open("inputs/day16.txt") as f:
+    raw_input = f.read().rstrip("\n")
 digits = hex2bin(raw_input)
 tree, _ = build_tree(digits)
 
@@ -142,7 +139,6 @@ while tree:
     tree.extend(tree[0].children)
     cur = tree.pop(0)
     answer1 += cur.version
-
 
 print(f"Answer 1: {answer1}")
 print(f"Answer 2: {answer2}")

@@ -3,7 +3,7 @@ def create_matrix(nrow, ncol, val):
 
 
 def pad_row(ncol, val):
-    return [val for __ in range(ncol + 2)]
+    return [val for _ in range(ncol + 2)]
 
 
 def pad_col(row, val):

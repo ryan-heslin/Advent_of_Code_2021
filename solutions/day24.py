@@ -83,6 +83,7 @@ number = []
 
 z = None
 for i in range(n_chunks):
+    new_w = None
     for w in range(1, 10):
         new_z = block(w, last_z, **values[i])
         if new_z in zs[i]:

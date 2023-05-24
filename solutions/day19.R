@@ -1,4 +1,3 @@
-
 compare_distances <- function(X, Y) {
     compare <- function(x) {
         sum(X[["distances"]][[x[[1]]]]

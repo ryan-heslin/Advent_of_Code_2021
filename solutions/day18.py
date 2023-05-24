@@ -19,8 +19,6 @@ def split(num, pattern=r"(?!-)(\d{2,})"):
     return num, True
 
 
-# We all cheat sometimes
-# Possible to match all nested pairs, get correct by counting brackets
 def count_brackets(string):
     count = 0
     for i, char in enumerate(string):

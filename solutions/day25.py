@@ -1,10 +1,9 @@
-with open("inputs/day25.txt") as f:
-    raw_input = f.read().split("\n")[:-1]
-
-processed = [list(x) for x in raw_input]
+from operator import itemgetter
 
 
 class Trench:
+    _val = itemgetter("val")
+
     def __init__(self, grid):
         self.colmax = len(grid[0])
         self.rowmax = len(grid)
@@ -24,7 +23,7 @@ class Trench:
         )
 
     def compare(self):
-        return [v["val"] for v in self.grid.values()]
+        return list(map(__class__._val, self.grid.values()))
 
     def update(self):
         moved = i = 1
@@ -64,6 +63,11 @@ class Trench:
             i += 1
         return i - 1
 
+
+with open("inputs/day25.txt") as f:
+    raw_input = f.read().split("\n")[:-1]
+
+processed = list(map(list, raw_input))
 
 grid = Trench(processed)
 answer1 = grid.update()

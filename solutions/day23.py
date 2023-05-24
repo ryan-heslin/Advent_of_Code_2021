@@ -6,9 +6,9 @@ from math import inf
 
 test = len(sys.argv) > 1 and sys.argv[2] == "test"
 
-values_map = {"A": 0, "B": 1, "C": 2, "D": 3}
-letters = list(values_map.keys())
-ends = {0, 10}
+VALUES_MAP = {"A": 0, "B": 1, "C": 2, "D": 3}
+LETTERS = list(VALUES_MAP.keys())
+ENDS = {0, 10}
 
 
 def parse(inp, xmax=10):
@@ -18,10 +18,10 @@ def parse(inp, xmax=10):
     stripped = list(zip(*stripped))
     stripped = stripped[1 : (xmax + 1)]
     mapping = {i: set() for i in range(4)}
-    for i in range(min(ends) + 2, max(ends) - 1, 2):
+    for i in range(min(ENDS) + 2, max(ENDS) - 1, 2):
         this = stripped[i]
         for j in range(ymax):
-            val = values_map[this[j]]
+            val = VALUES_MAP[this[j]]
             mapping[val].add((i, j))  # Add position to set
 
     return mapping, ymax
@@ -31,7 +31,7 @@ def generate_positions(xmax=10, ymax=2):
     positions = set()
     for i in range(xmax + 1):
         if (
-            i not in ends and i % 2 == 0
+            i not in ENDS and i % 2 == 0
         ):  # side rooms (rooms above hallways not directly represented)
             for j in range(ymax):
                 positions.add((i, j))
@@ -103,6 +103,7 @@ def A_star(start, goal, debug=False):
                 min_cost = this_cost
 
         current_k = hash(current)
+        assert current
         current.find_neighbors()
         if debug:
             print(hash(current))
@@ -221,7 +222,7 @@ class Factory:
                 [" ", " "] + list(repeat(__class__.wall, self.xmax - 1)) + [" ", " "]
             )
             for k, v in self.mapping.items():
-                char = letters[k]
+                char = LETTERS[k]
                 for coord in v:
                     if coord[1] == self.ymax:
                         hall[coord[0] + 1] = char
