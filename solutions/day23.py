@@ -88,7 +88,6 @@ class Arrangement:
             return result
 
     def path_open(self, start, end):
-        cls = type(self)
         iter_range = (
             range(start + 1, end + 1) if start < end else range(start - 1, end - 1, -1)
         )
@@ -140,7 +139,21 @@ class Arrangement:
         return all(el == room_idx for el in self.rooms[room_idx])
 
     def h(self):
-        return 0
+        cls = type(self)
+        estimate = sum(
+            distance(i, cls._room_indices[el]) * cls._costs[el]
+            for i, el in enumerate(self.hall)
+            if el is not None
+        )
+
+        for amphi, room in enumerate(self.rooms):
+            position = cls._room_indices[amphi]
+            for i, el in enumerate(room):
+                if el is not None:
+                    estimate += (el != amphi) * (
+                        distance(position, cls._room_indices[el]) + i
+                    )
+        return estimate
 
     def __hash__(self) -> int:
         return hash((self.hall, self.rooms))
@@ -260,8 +273,6 @@ def A_star(start, goal, debug=False):
     g_score[start] = 0
     f_score = defaultdict(lambda: inf)
     f_score[start] = estimate
-    visited = set()
-    visited.add(start)
 
     while queue.qsize():
 
@@ -285,22 +296,15 @@ def A_star(start, goal, debug=False):
             print("\n\n\n")
         # print(new_neighbors)
         for neighbor, dist in new_neighbors.items():
-            # breakpoint()
-            # print(neighbor)
-
             # Distance from start to neighbor through current
             g_score_new = g_score[current] + dist
-            # print(f"distance: {current.d(neighbor)}")
-            # print(neighbor)
             # This path to neighbor cheaper than any known, so record it
             if g_score_new < g_score[neighbor]:
                 # New estimate of cost from this neighbor
                 g_score[neighbor] = g_score_new
                 estimate = neighbor.h()
                 f_score[neighbor] = g_score_new + estimate
-                if neighbor not in visited:
-                    # visited.add(neighbor)
-                    queue.put((estimate, neighbor), block=False)
+                queue.put((estimate, neighbor), block=False)
 
     return g_score[goal]
 

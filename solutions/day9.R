@@ -2,6 +2,13 @@ get_minima <- function(mat, coords, layer) {
     mapply(\(x, y) mat[x, y] < min(mat[t(c(x, y) + layer)]), coords[, 1], coords[, 2])
 }
 
+node <- function(coords, neighbors, valid) {
+    # Generate list names of four neighboring points
+    n_names <- lapply(neighbors, \(x) coords[1:2] + x) |>
+        sapply(\(x) paste(x[1:2], collapse = ",")) |>
+        intersect(valid)
+    list(name = paste(coords[1:2], collapse = ","), val = coords[3], id = 0, visited = FALSE, neighbors = n_names)
+}
 expand_basin <- function(node, mapping, cur_id) {
     # Already visited
     if (node[["id"]] != 0) {
@@ -20,7 +27,7 @@ expand_basin <- function(node, mapping, cur_id) {
 raw_input <- readLines("inputs/day9.txt")
 processed <- sapply(raw_input, \(x) unlist(strsplit(x, "")), USE.NAMES = FALSE) |>
     t() |>
-    apply(MARGIN = 2, as.numeric)
+    `class<-`("integer")
 
 pad <- max(processed) + 1
 processed <- cbind(pad, processed, pad)
@@ -42,14 +49,6 @@ lookup <- setNames(0:9, as.character(0:9)) |>
     lapply(\(x) asplit(which(processed == x, arr.ind = TRUE), 1))
 
 # Structrue representing point status, with "pointers" toa djacent nodes
-node <- function(coords, neighbors, valid) {
-    # browser()
-    # Generate list names of four neighboring points
-    n_names <- lapply(neighbors, \(x) coords[1:2] + x) |>
-        sapply(\(x) paste(x[1:2], collapse = ",")) |>
-        intersect(valid)
-    list(name = paste(coords[1:2], collapse = ","), val = coords[3], id = 0, visited = FALSE, neighbors = n_names)
-}
 
 coords <- coords[coords[, 3] < 9, ]
 layer <- asplit(layer, 2)
@@ -71,6 +70,5 @@ answer2 <- table(vapply(mapping, \(x) x[["id"]], FUN.VALUE = numeric(1))) |>
     head(3) |>
     prod()
 
-print(paste("Answer 1:", answer1))
-
-print(paste("Answer 2:", answer2))
+cat(answer1, "\n")
+cat(answer2, "\n")
