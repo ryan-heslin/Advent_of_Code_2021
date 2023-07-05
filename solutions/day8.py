@@ -1,7 +1,7 @@
 class Coding:
     def __init__(self, keys):
         self.decoding = None
-        self.coding = [{y for y in x} for x in keys.split(" ")]
+        self.coding = list(map(set, keys.split(" ")))
         assert set(UNIQUE_LENGTHS.values()).issubset({len(x) for x in self.coding})
 
     def __getitem__(self, length):
@@ -54,8 +54,8 @@ mapping = dict((x.split(" | ") for x in raw_input))
 UNIQUE_LENGTHS = {1: 2, 4: 4, 7: 3, 8: 7}
 lengths = [len(pattern) for v in mapping.values() for pattern in v.split(" ")]
 
-answer1 = sum(x in UNIQUE_LENGTHS.values() for x in lengths)
-print(f"Answer 1 = {answer1}")
+part1 = sum(x in UNIQUE_LENGTHS.values() for x in lengths)
+print(part1)
 
 master = dict(
     zip(
@@ -78,10 +78,10 @@ master = dict(
 decoding = {x: None for x in ("a", "b", "c", "d", "e", "f", "g")}
 
 
-answer2 = 0
+part2 = 0
 for k, v in mapping.items():
     coding = Coding(k)
     coding.unscramble()
-    answer2 += int("".join(str(coding.decrypt(x, master)) for x in v.split(" ")))
+    part2 += int("".join(str(coding.decrypt(x, master)) for x in v.split(" ")))
 
-print(f"answer2 = {answer2}")
+print(part2)
