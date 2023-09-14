@@ -1,12 +1,11 @@
 import re
+from itertools import combinations
 from math import ceil
 from math import floor
 
 
 def add(lhs, rhs):
-    temp = eval(lhs)
-    temp.append(eval(rhs))
-    return str(temp)
+    return str(eval(lhs) + eval(rhs))
 
 
 def split(num, pattern=r"(?!-)(\d{2,})"):
@@ -82,21 +81,19 @@ def process(nums):
 
 
 def find_largest(nums):
-    highest_magnitude = 0
-
-    for i, num1 in enumerate(nums):
-        for j, num2 in enumerate(nums):
-            if i != j:
-                result = process([num1, num2])
-                highest_magnitude = max(highest_magnitude, find_magnitude(eval(result)))
-    return highest_magnitude
+    return max(
+        max(
+            find_magnitude(eval(process([lhs, rhs]))),
+            find_magnitude(eval(process([rhs, lhs]))),
+        )
+        for lhs, rhs in combinations(nums, r=2)
+    )
 
 
 with open("inputs/day18.txt") as f:
     raw_input = f.read()
 
 processed = raw_input.split("\n")[:-1]
-
 
 summed = eval(process(processed.copy()))
 magnitude = find_magnitude(summed)

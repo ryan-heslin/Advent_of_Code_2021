@@ -14,7 +14,9 @@ simulate <- function(grid, neighbors_index, find_sync = FALSE) {
     dims <- prod(dim(grid))
     while (i < iterations) {
         grid[, ] <- complex(dims, Re(grid) + 1, 0)
-        while (nrow(to_glow <- which(Re(grid) > 9 & Im(grid) == 0, arr.ind = TRUE)) > 0) {
+        while (nrow(to_glow <- which(Re(grid) > 9 & Im(grid) == 0,
+            arr.ind = TRUE
+        )) > 0) {
             glowed <- glowed + nrow(to_glow)
             # Signal already glowed
             grid[to_glow] <- grid[to_glow] + 1i
@@ -54,7 +56,10 @@ adjacent <- cbind(
     c(1, 1), c(1, 0), c(1, -1),
     c(0, -1), c(-1, -1)
 )
-neighbors <- apply(which(Re(grid) > -1, arr.ind = TRUE), 1, get_neighbors) |>
+neighbors <- apply(
+    which(Re(grid) > -1, arr.ind = TRUE),
+    1, get_neighbors
+) |>
     array(dim = c(10, 10, 1))
 
 
